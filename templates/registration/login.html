@@ -1,0 +1,55 @@
+{% extends "base.html" %}
+{% block title %}Entrar · Nexum{% endblock %}
+
+{% block content %}
+<div class="fixed top-4 right-4">
+  {% include "partials/theme_toggle.html" %}
+</div>
+<div class="min-h-screen flex flex-col items-center justify-center px-4">
+  <div class="w-full max-w-sm">
+
+    <div class="flex flex-col items-center mb-8">
+      {% include "partials/logo_mark.html" with classes="h-14 w-14" %}
+      <h1 class="mt-4 text-2xl font-semibold">Nexum</h1>
+      <p class="mt-1 text-sm text-ink-soft">Acesse sua conta para continuar</p>
+    </div>
+
+    <div class="bg-surface border border-line rounded-2xl shadow-sm p-8">
+      {% if form.errors %}
+      <div class="mb-4 rounded-lg bg-danger-soft border border-danger/20 text-danger text-sm p-3">
+        Usuário ou senha incorretos.
+      </div>
+      {% endif %}
+
+      <form method="post" class="space-y-4">
+        {% csrf_token %}
+        <input type="hidden" name="next" value="{{ next }}">
+
+        <div>
+          <label for="id_username" class="block text-sm font-medium">Usuário</label>
+          <input id="id_username" name="username" type="text" required autofocus
+                 autocomplete="username" value="{{ form.username.value|default:'' }}"
+                 class="mt-1 w-full rounded-lg border border-line px-3 py-2
+                        focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/30">
+        </div>
+
+        <div>
+          <label for="id_password" class="block text-sm font-medium">Senha</label>
+          <input id="id_password" name="password" type="password" required
+                 autocomplete="current-password"
+                 class="mt-1 w-full rounded-lg border border-line px-3 py-2
+                        focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/30">
+        </div>
+
+        <button type="submit"
+                class="w-full rounded-lg bg-primary text-white font-medium py-2.5
+                       hover:bg-primary-hover transition">
+          Entrar
+        </button>
+      </form>
+    </div>
+
+    <p class="mt-8 text-center text-xs text-ink-soft">Nexum · Nórtica Tecnologia</p>
+  </div>
+</div>
+{% endblock %}

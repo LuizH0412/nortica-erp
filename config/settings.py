@@ -43,6 +43,7 @@ INSTALLED_APPS = [
     'django.contrib.staticfiles',
 
     'core',
+    "django_tailwind_cli",
 ]
 
 MIDDLEWARE = [
@@ -60,7 +61,7 @@ ROOT_URLCONF = 'config.urls'
 TEMPLATES = [
     {
         'BACKEND': 'django.template.backends.django.DjangoTemplates',
-        'DIRS': [],
+        'DIRS': [BASE_DIR / "templates"],
         'APP_DIRS': True,
         'OPTIONS': {
             'context_processors': [
@@ -141,4 +142,11 @@ AUTH_USER_MODEL = "core.Usuario"
 LANGUAGE_CODE = "pt-br"
 TIME_ZONE = "America/Sao_Paulo"  
 USE_TZ = True
+
+STATICFILES_DIRS = [BASE_DIR / "assets"]
+TAILWIND_CLI_SRC_CSS = BASE_DIR / "styles" / "source.css"
+
+LOGIN_URL = "login"
+LOGIN_REDIRECT_URL = "home"
+LOGOUT_REDIRECT_URL = "login"
 

@@ -1,0 +1,32 @@
+{% load tailwind_cli %}
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{% block title %}Nexum{% endblock %}</title>
+
+  <script>
+    // Padrão é claro. Só entra no escuro se a pessoa tiver escolhido antes.
+    try {
+      if (localStorage.getItem("nexum-theme") === "dark") {
+        document.documentElement.classList.add("dark");
+      }
+    } catch (e) {}
+
+    function toggleTheme() {
+      var dark = document.documentElement.classList.toggle("dark");
+      try { localStorage.setItem("nexum-theme", dark ? "dark" : "light"); } catch (e) {}
+    }
+  </script>
+
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+  {% tailwind_css %}
+  <script src="https://unpkg.com/htmx.org@2.0.4" defer></script>
+</head>
+<body class="bg-page text-ink antialiased">
+  {% block content %}{% endblock %}
+</body>
+</html>

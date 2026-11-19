@@ -1,0 +1,12 @@
+{% extends "base_app.html" %}
+{% block title %}Início · Nexum{% endblock %}
+{% block page_title %}Início{% endblock %}
+
+{% block page %}
+<div class="bg-surface border border-line rounded-xl p-6">
+  <h2 class="text-lg font-semibold">
+    Bem-vindo, {{ request.user.get_full_name|default:request.user.username }}!
+  </h2>
+  <p class="mt-1 text-sm text-ink-soft">Seu painel do Nexum está pronto.</p>
+</div>
+{% endblock %}
