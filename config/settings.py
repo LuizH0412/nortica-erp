@@ -31,22 +31,28 @@ DEBUG = True
 
 ALLOWED_HOSTS = []
 
-
-# Application definition
-
-INSTALLED_APPS = [
-    'django.contrib.admin',
-    'django.contrib.auth',
-    'django.contrib.contenttypes',
-    'django.contrib.sessions',
-    'django.contrib.messages',
-    'django.contrib.staticfiles',
-
-    'core',
+# Tabelas no espaço público (compartilhado): só o controle técnico de instâncias
+SHARED_APPS = [
+    "django_tenants",  # sempre o primeiro
+    "instancias",
+    "django.contrib.contenttypes",
+    "django.contrib.messages",
+    "django.contrib.staticfiles",
     "django_tailwind_cli",
 ]
 
+# Tabelas em cada instância (todo o sistema)
+TENANT_APPS = [
+    "core",
+    "django.contrib.auth",
+    "django.contrib.contenttypes",
+    "django.contrib.sessions",
+]
+
+INSTALLED_APPS = list(SHARED_APPS) + [a for a in TENANT_APPS if a not in SHARED_APPS]
+
 MIDDLEWARE = [
+    "django_tenants.middleware.main.TenantMainMiddleware",
     'django.middleware.security.SecurityMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
@@ -81,7 +87,7 @@ WSGI_APPLICATION = 'config.wsgi.application'
 
 DATABASES = {
     "default": {
-        "ENGINE": "django.db.backends.postgresql",
+        "ENGINE": "django_tenants.postgresql_backend",
         "NAME": os.getenv("DB_NAME"),
         "USER": os.getenv("DB_USER"),
         "PASSWORD": os.getenv("DB_PASSWORD"),
@@ -149,4 +155,17 @@ TAILWIND_CLI_SRC_CSS = BASE_DIR / "styles" / "source.css"
 LOGIN_URL = "login"
 LOGIN_REDIRECT_URL = "home"
 LOGOUT_REDIRECT_URL = "login"
+
+DOMINIO_BASE = os.getenv("DOMINIO_BASE", "localhost")
+ALLOWED_HOSTS = [".localhost", "127.0.0.1", DOMINIO_BASE, f".{DOMINIO_BASE}"]
+
+MASTER_USERNAME = os.getenv("MASTER_USERNAME", "master")
+MASTER_EMAIL = os.getenv("MASTER_EMAIL", "")
+
+DATABASE_ROUTERS = ("django_tenants.routers.TenantSyncRouter",)
+TENANT_MODEL = "instancias.Instancia"
+TENANT_DOMAIN_MODEL = "instancias.Dominio"
+PUBLIC_SCHEMA_URLCONF = "config.urls_public"
+
+AUTH_USER_MODEL = "core.Usuario"
 
