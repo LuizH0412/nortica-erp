@@ -1,0 +1,105 @@
+{% extends "base_app.html" %}
+{% load formatos %}
+{% block title %}Clientes · Nexum{% endblock %}
+{% block page_title %}Clientes{% endblock %}
+
+{% block page %}
+<div class="flex flex-wrap items-center justify-between gap-3 mb-4">
+  <form method="get" class="flex w-full max-w-xl flex-wrap items-center gap-2">
+    <div class="relative min-w-60 flex-1">
+      <span class="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-ink-soft">
+        {% include "partials/icone_busca.html" %}
+      </span>
+      <input type="search" name="q" value="{{ q }}" placeholder="Buscar por nome, razão social ou CPF/CNPJ"
+             class="w-full rounded-lg border border-line bg-surface pl-9 pr-3 py-2 text-sm
+                    focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/30">
+    </div>
+    {% include "partials/filtro_situacao.html" %}
+  </form>
+  <a href="{% url 'cliente_criar' %}" class="btn btn-novo">{% include "partials/icone_mais.html" %} Novo cliente</a>
+</div>
+
+<div class="bg-surface border border-line rounded-xl overflow-hidden">
+  <div class="overflow-x-auto">
+    <table class="w-full text-sm">
+      <thead class="bg-page text-ink-soft text-left">
+        <tr>
+          <th class="w-12 px-0 py-3">
+            <div class="flex items-center justify-center">
+              <input type="checkbox" data-selecionar-todos aria-label="Selecionar todos"
+                     class="h-4 w-4 rounded border-line accent-primary cursor-pointer">
+            </div>
+          </th>
+          <th class="w-12 px-0 py-3"></th>
+          {% include "partials/th_ordenar.html" with campo="nome" rotulo="Nome" %}
+          {% include "partials/th_ordenar.html" with campo="documento" rotulo="CPF/CNPJ" %}
+          {% include "partials/th_ordenar.html" with campo="cidade" rotulo="Cidade" %}
+          {% include "partials/th_ordenar.html" with campo="tipo" rotulo="Tipo" %}
+          {% include "partials/th_ordenar.html" with campo="atendente" rotulo="Atendente" %}
+          {% include "partials/th_ordenar.html" with campo="situacao" rotulo="Situação" %}
+        </tr>
+      </thead>
+      <tbody class="divide-y divide-line">
+        {% for c in clientes %}
+        {% url 'cliente_editar' c.pk as url_abrir %}
+        <tr class="hover:bg-primary-soft/60 transition-colors">
+          <td class="px-0 py-3">
+            <div class="flex items-center justify-center">
+              <input type="checkbox" name="selecionados" value="{{ c.pk }}" data-selecionar
+                     aria-label="Selecionar {{ c }}"
+                     class="h-4 w-4 rounded border-line accent-primary cursor-pointer">
+            </div>
+          </td>
+          <td class="px-0 py-3">
+            <div class="flex items-center justify-center">
+              <a href="{{ url_abrir }}" title="Editar" aria-label="Editar {{ c }}"
+                 class="inline-flex rounded-md p-1.5 text-ink-soft hover:text-primary-text hover:bg-primary-soft transition">
+                {% include "partials/icone_lapis.html" %}
+              </a>
+            </div>
+          </td>
+          {# Cada célula é um link para abrir o registro #}
+          <td class="p-0">
+            <a href="{{ url_abrir }}" tabindex="-1" class="block px-4 py-3">
+              <div class="font-medium">{{ c.nome_exibicao }}</div>
+              {% if c.nome_fantasia %}<div class="text-xs text-ink-soft">{{ c.razao_social }}</div>{% endif %}
+            </a>
+          </td>
+          <td class="p-0 whitespace-nowrap"><a href="{{ url_abrir }}" tabindex="-1" class="block px-4 py-3">{{ c.documento|documento|default:"—" }}</a></td>
+          <td class="p-0">
+            <a href="{{ url_abrir }}" tabindex="-1" class="block px-4 py-3">
+              {% if c.municipio %}{{ c.municipio.nome }}/{{ c.municipio.uf }}{% else %}—{% endif %}
+            </a>
+          </td>
+          <td class="p-0"><a href="{{ url_abrir }}" tabindex="-1" class="block px-4 py-3">{{ c.tipo_cliente|default:"—" }}</a></td>
+          <td class="p-0"><a href="{{ url_abrir }}" tabindex="-1" class="block px-4 py-3">{{ c.atendente|default:"—" }}</a></td>
+          <td class="p-0">
+            <a href="{{ url_abrir }}" tabindex="-1" class="block px-4 py-3">
+              {% if not c.ativo %}
+              <span class="rounded-full bg-ink-soft/15 text-ink-soft px-2.5 py-0.5 text-xs font-medium">Desativado</span>
+              {% elif c.bloqueado %}
+              <span class="rounded-full bg-danger-soft text-danger px-2.5 py-0.5 text-xs font-medium">Bloqueado</span>
+              {% else %}
+              <span class="rounded-full bg-success/15 text-success px-2.5 py-0.5 text-xs font-medium">Ativo</span>
+              {% endif %}
+            </a>
+          </td>
+        </tr>
+        {% empty %}
+        <tr>
+          <td colspan="8" class="px-4 py-10 text-center text-ink-soft">
+            {% if q %}Nenhum cliente {% if so_desativados %}desativado {% endif %}encontrado para "{{ q }}".
+            {% elif so_desativados %}Nenhum cliente desativado.
+            {% else %}Nenhum cliente ativo. Clique em <strong>Novo cliente</strong> para cadastrar.{% endif %}
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+
+{% include "partials/paginacao.html" %}
+
+<script>Nexum.selecao();</script>
+{% endblock %}

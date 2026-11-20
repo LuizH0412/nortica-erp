@@ -1,0 +1,64 @@
+{% comment %}
+Empresa atual (pelo campo "unidade") no topo da tela, com a troca de empresa sem sair do sistema.
+Contexto: empresa_atual e empresas_troca (vêm de empresas.context_processors.empresa).
+{% endcomment %}
+{% if empresa_atual %}
+{% if empresas_troca %}
+<details class="relative" data-dropdown>
+  <summary class="group flex cursor-pointer list-none items-center gap-2.5 rounded-xl border border-line bg-surface py-1.5 pl-1.5 pr-3
+                  transition hover:border-primary/40 hover:bg-primary-soft/50"
+           title="Trocar de empresa" aria-label="Empresa atual: {{ empresa_atual.unidade }}. Clique para trocar.">
+    <span class="flex h-8 w-8 items-center justify-center rounded-lg bg-linear-to-br from-primary to-accent text-white shadow-sm shadow-primary/30">
+      {% include "partials/icone_empresa.html" %}
+    </span>
+    <span class="text-left leading-tight">
+      <span class="block text-[11px] text-ink-soft">Empresa</span>
+      <span class="block max-w-40 truncate text-sm font-semibold">{{ empresa_atual.unidade }}</span>
+    </span>
+    <svg class="h-4 w-4 text-ink-soft transition-transform duration-200 group-open:rotate-180" viewBox="0 0 24 24" fill="none"
+         stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+      <path d="m6 9 6 6 6-6"/>
+    </svg>
+  </summary>
+
+  <div data-dropdown-menu class="absolute right-0 z-40 mt-2 w-80 rounded-2xl border border-line bg-surface p-1.5 shadow-2xl">
+    <p class="px-3 pt-2 pb-1.5 text-xs font-medium uppercase tracking-wide text-ink-soft">Trocar de empresa</p>
+    <div class="max-h-80 space-y-0.5 overflow-y-auto">
+      {% for e in empresas_troca %}
+      <form method="post" action="{% url 'trocar_empresa' e.pk %}">
+        {% csrf_token %}
+        <button type="submit" {% if e.pk == empresa_atual.pk %}disabled aria-current="true"{% endif %}
+                class="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left transition
+                       {% if e.pk == empresa_atual.pk %}bg-primary-soft cursor-default{% else %}hover:bg-primary-soft/60{% endif %}">
+          <span class="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg
+                       {% if e.pk == empresa_atual.pk %}bg-linear-to-br from-primary to-accent text-white{% else %}bg-page text-ink-soft{% endif %}">
+            {% include "partials/icone_empresa.html" %}
+          </span>
+          <span class="min-w-0 flex-1">
+            <span class="block truncate text-sm font-semibold {% if e.pk == empresa_atual.pk %}text-primary-text{% endif %}">{{ e.unidade }}</span>
+            <span class="block truncate text-xs text-ink-soft">{{ e.nome_exibicao }}</span>
+          </span>
+          {% if e.pk == empresa_atual.pk %}
+          <span class="text-primary-text">{% include "partials/icone_check.html" %}</span>
+          {% elif not e.ativa %}
+          <span class="shrink-0 rounded-full bg-ink-soft/15 px-2 py-0.5 text-[10px] font-medium text-ink-soft">Desativada</span>
+          {% endif %}
+        </button>
+      </form>
+      {% endfor %}
+    </div>
+  </div>
+</details>
+{% else %}
+{# Uma empresa só: apenas indica onde a pessoa está #}
+<div class="flex items-center gap-2.5 rounded-xl border border-line bg-surface py-1.5 pl-1.5 pr-3" title="Empresa atual">
+  <span class="flex h-8 w-8 items-center justify-center rounded-lg bg-linear-to-br from-primary to-accent text-white shadow-sm shadow-primary/30">
+    {% include "partials/icone_empresa.html" %}
+  </span>
+  <span class="text-left leading-tight">
+    <span class="block text-[11px] text-ink-soft">Empresa</span>
+    <span class="block max-w-40 truncate text-sm font-semibold">{{ empresa_atual.unidade }}</span>
+  </span>
+</div>
+{% endif %}
+{% endif %}

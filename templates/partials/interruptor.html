@@ -1,0 +1,20 @@
+{# Checkbox desenhado como interruptor (liga/desliga). Uso: include com campo=form.ativo #}
+{# form_id (opcional): liga o campo a um <form> de fora, pelo atributo form="..." #}
+<label class="inline-flex items-start gap-3 {% if campo.field.disabled %}opacity-60 cursor-not-allowed{% else %}cursor-pointer{% endif %}">
+  <span class="relative mt-0.5 inline-flex shrink-0">
+    <input type="checkbox" name="{{ campo.html_name }}" id="{{ campo.id_for_label }}"
+           class="peer sr-only" {% if campo.value %}checked{% endif %}
+           {% if campo.field.disabled %}disabled{% endif %}
+           {% if form_id %}form="{{ form_id }}"{% endif %}>
+    <span class="h-6 w-11 rounded-full bg-line transition peer-checked:bg-primary
+                 peer-focus-visible:ring-2 peer-focus-visible:ring-primary/30"></span>
+    <span class="absolute left-0.5 top-0.5 h-5 w-5 rounded-full bg-white shadow transition peer-checked:translate-x-5"></span>
+  </span>
+  <span>
+    <span class="block text-sm font-medium">{{ campo.label }}</span>
+    {% if campo.help_text %}<span class="block text-xs text-ink-soft">{{ campo.help_text }}</span>{% endif %}
+  </span>
+</label>
+{% for erro in campo.errors %}
+<p class="mt-1 text-xs text-danger" data-erro>{{ erro }}</p>
+{% endfor %}

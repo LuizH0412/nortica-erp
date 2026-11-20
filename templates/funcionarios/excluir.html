@@ -1,0 +1,22 @@
+{% extends "base_app.html" %}
+{% block title %}Excluir funcionário · Nexum{% endblock %}
+{% block page_title %}Excluir funcionário{% endblock %}
+
+{% block page %}
+<div class="max-w-lg bg-surface border border-line rounded-xl p-6">
+  <h2 class="font-semibold">Excluir {{ funcionario.nome }}?</h2>
+  <p class="mt-2 text-sm text-ink-soft">
+    Esta ação não pode ser desfeita.
+    {% if funcionario.usuario %}
+    O acesso ao sistema (<strong class="text-ink">{{ funcionario.usuario.email }}</strong>) também será removido.
+    {% endif %}
+    Se a pessoa só saiu da empresa, prefira desativar o cadastro.
+  </p>
+  <form method="post" class="mt-5 flex items-center gap-4">
+    {% csrf_token %}
+    <button type="submit"
+            class="btn btn-perigo">{% include "partials/icone_lixeira.html" %} Excluir definitivamente</button>
+    <a href="{% url 'funcionario_editar' funcionario.pk %}" class="btn btn-texto">Cancelar</a>
+  </form>
+</div>
+{% endblock %}

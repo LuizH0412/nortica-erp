@@ -1,0 +1,223 @@
+{% load formatos %}
+{# Aba "Financeiro" do cliente. Os números vêm de clientes/financeiro.py (resumo_financeiro). #}
+{% with f=financeiro %}
+<div class="space-y-6">
+
+  {# ---------- Situação do cliente ---------- #}
+  <section class="relative overflow-hidden rounded-2xl border border-line bg-surface p-5 pl-7">
+    <span class="absolute inset-y-0 left-0 w-1.5
+                 {% if f.situacao == 'bloqueado' %}bg-danger{% elif f.situacao == 'inadimplente' %}bg-warning{% else %}bg-success{% endif %}"></span>
+    <div class="flex flex-wrap items-center gap-4">
+      <span class="flex h-12 w-12 shrink-0 items-center justify-center rounded-full ring-8
+                   {% if f.situacao == 'bloqueado' %}bg-danger-soft text-danger ring-danger-soft/50
+                   {% elif f.situacao == 'inadimplente' %}bg-warning/15 text-warning ring-warning/10
+                   {% else %}bg-success/15 text-success ring-success/10{% endif %}">
+        {% if f.situacao == 'em_dia' %}
+        <svg class="h-6 w-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>
+        {% else %}
+        <svg class="h-6 w-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3"/><path d="M12 9v4M12 17h.01"/></svg>
+        {% endif %}
+      </span>
+      <div class="min-w-0 flex-1">
+        <div class="flex flex-wrap items-center gap-2">
+          <h3 class="text-lg font-semibold">
+            {% if f.situacao == 'bloqueado' %}Cliente bloqueado{% elif f.situacao == 'inadimplente' %}Cliente com parcelas vencidas{% else %}Cliente em dia{% endif %}
+          </h3>
+          <span class="inline-flex items-center gap-1.5 rounded-full px-2.5 py-0.5 text-xs font-semibold
+                       {% if f.situacao == 'bloqueado' %}bg-danger-soft text-danger{% elif f.situacao == 'inadimplente' %}bg-warning/15 text-warning{% else %}bg-success/15 text-success{% endif %}">
+            <span class="h-1.5 w-1.5 rounded-full bg-current"></span>
+            {% if f.situacao == 'bloqueado' %}Bloqueado{% elif f.situacao == 'inadimplente' %}Inadimplente{% else %}Em dia{% endif %}
+          </span>
+        </div>
+        <p class="mt-1 text-sm text-ink-soft">
+          {% if f.parcelas_vencidas %}{{ f.parcelas_vencidas }} parcela{{ f.parcelas_vencidas|pluralize }} vencida{{ f.parcelas_vencidas|pluralize }}{% else %}Sem parcelas vencidas{% endif %}
+          · Limite disponível: <strong class="text-ink">{{ f.disponivel|moeda }}</strong>
+          · {% if f.ultima_compra %}Última compra em {{ f.ultima_compra|date:"d/m/Y" }}{% else %}Nenhuma compra registrada{% endif %}
+        </p>
+      </div>
+    </div>
+  </section>
+
+  {% if not f.modulos_disponiveis %}
+  <p class="flex items-start gap-2 rounded-xl bg-primary-soft px-4 py-3 text-sm text-primary-text">
+    <svg class="mt-0.5 h-4 w-4 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4M12 8h.01"/></svg>
+    Valores em aberto, parcelas e compras são calculados automaticamente e aparecem aqui quando os módulos de vendas e contas a receber estiverem ativos.
+  </p>
+  {% endif %}
+
+  <div class="grid gap-6 lg:grid-cols-2">
+    {# ---------- Regras comerciais ---------- #}
+    <section class="flex flex-col rounded-2xl border border-line bg-surface">
+      <div class="flex items-center justify-between gap-3 border-b border-line px-6 py-4">
+        <div class="flex items-center gap-3">
+          <span class="flex h-9 w-9 items-center justify-center rounded-lg bg-linear-to-br from-amber-400 to-orange-500 text-white shadow-sm shadow-orange-500/30">
+            <svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="6" width="20" height="12" rx="2"/><circle cx="12" cy="12" r="2"/><path d="M6 12h.01M18 12h.01"/></svg>
+          </span>
+          <div>
+            <h3 class="font-semibold">Regras comerciais</h3>
+            <p class="text-xs text-ink-soft">Tabela de preço e condições de pagamento</p>
+          </div>
+        </div>
+        {% if object.tipo_cliente %}
+        <span class="rounded-full bg-amber-500/15 px-2.5 py-0.5 text-xs font-semibold uppercase text-amber-600">{{ object.tipo_cliente }}</span>
+        {% endif %}
+      </div>
+      <dl class="flex-1 divide-y divide-line px-6 text-sm">
+        <div class="flex items-center justify-between py-3">
+          <dt class="text-ink-soft">Tabela de preço</dt>
+          <dd class="text-ink-soft">— <span class="ml-1 rounded-full bg-page px-1.5 text-[10px]">em breve</span></dd>
+        </div>
+        <div class="flex items-center justify-between py-3">
+          <dt class="text-ink-soft">Tipo de cliente</dt>
+          <dd class="font-semibold">{{ object.tipo_cliente|default:"—" }}</dd>
+        </div>
+        <div class="flex items-center justify-between py-3">
+          <dt class="text-ink-soft">Condição de pagamento padrão</dt>
+          <dd class="text-ink-soft">— <span class="ml-1 rounded-full bg-page px-1.5 text-[10px]">em breve</span></dd>
+        </div>
+        <div class="flex items-center justify-between py-3">
+          <dt class="text-ink-soft">Condições permitidas</dt>
+          <dd class="font-semibold">0</dd>
+        </div>
+      </dl>
+      <p class="px-6 pb-5 text-xs text-ink-soft">
+        Tabelas de preço e condições de pagamento entram com o módulo de vendas.
+      </p>
+    </section>
+
+    {# ---------- Crédito e inadimplência ---------- #}
+    <section class="flex flex-col rounded-2xl border border-line bg-surface">
+      <div class="flex items-center justify-between gap-3 border-b border-line px-6 py-4">
+        <div class="flex items-center gap-3">
+          <span class="flex h-9 w-9 items-center justify-center rounded-lg bg-linear-to-br from-primary to-accent text-white shadow-sm shadow-primary/30">
+            <svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="5" width="20" height="14" rx="2"/><path d="M2 10h20"/></svg>
+          </span>
+          <div>
+            <h3 class="font-semibold">Crédito e inadimplência</h3>
+            <p class="text-xs text-ink-soft">Limite, valores em aberto e crédito do cliente</p>
+          </div>
+        </div>
+        <span class="inline-flex items-center gap-1.5 rounded-full px-2.5 py-0.5 text-xs font-semibold
+                     {% if f.situacao == 'bloqueado' %}bg-danger-soft text-danger{% elif f.situacao == 'inadimplente' %}bg-warning/15 text-warning{% else %}bg-success/15 text-success{% endif %}">
+          <span class="h-1.5 w-1.5 rounded-full bg-current"></span>
+          {% if f.situacao == 'bloqueado' %}Bloqueado{% elif f.situacao == 'inadimplente' %}Inadimplente{% else %}Em dia{% endif %}
+        </span>
+      </div>
+
+      <dl class="flex-1 px-6 text-sm">
+        <div class="flex items-center justify-between border-b border-line py-3">
+          <dt class="text-ink-soft">Limite para compra a prazo</dt>
+          <dd class="font-semibold">{{ f.limite|moeda }}</dd>
+        </div>
+        <div class="flex items-center justify-between border-b border-line py-3">
+          <dt class="text-ink-soft">Valor em aberto</dt>
+          <dd class="font-semibold">{{ f.em_aberto|moeda }}</dd>
+        </div>
+        <div class="my-3 flex items-center justify-between rounded-xl px-4 py-3
+                    {% if f.disponivel > 0 %}bg-success/10 text-success{% else %}bg-page text-ink-soft{% endif %}">
+          <dt class="font-medium">Limite disponível</dt>
+          <dd class="text-lg font-bold">{{ f.disponivel|moeda }}</dd>
+        </div>
+        <div class="flex items-center justify-between border-b border-line py-3">
+          <dt class="text-ink-soft">Saldo em crédito na loja</dt>
+          <dd class="font-semibold">{{ f.saldo_credito_loja|moeda }}</dd>
+        </div>
+        <div class="flex items-center justify-between border-b border-line py-3">
+          <dt class="text-ink-soft">Valor vencido</dt>
+          <dd class="font-semibold {% if f.vencido > 0 %}text-danger{% endif %}">{{ f.vencido|moeda }}</dd>
+        </div>
+        <div class="flex items-center justify-between border-b border-line py-3">
+          <dt class="text-ink-soft">Parcelas vencidas</dt>
+          <dd class="font-semibold {% if f.parcelas_vencidas %}text-danger{% endif %}">{{ f.parcelas_vencidas }}</dd>
+        </div>
+        <div class="py-3">
+          <div class="flex items-center justify-between">
+            <dt class="text-ink-soft">Utilização do limite</dt>
+            <dd class="font-semibold">{{ f.utilizacao }}%</dd>
+          </div>
+          <div class="mt-2 h-2 overflow-hidden rounded-full bg-page" role="progressbar"
+               aria-valuenow="{{ f.utilizacao }}" aria-valuemin="0" aria-valuemax="100" aria-label="Utilização do limite">
+            <div class="h-full rounded-full
+                        {% if f.utilizacao >= 90 %}bg-danger{% elif f.utilizacao >= 70 %}bg-warning{% else %}bg-linear-to-r from-primary to-accent{% endif %}"
+                 style="width: {{ f.utilizacao }}%"></div>
+          </div>
+        </div>
+      </dl>
+
+      <div class="flex items-center justify-between gap-3 border-t border-line px-6 py-4">
+        <p class="text-xs text-ink-soft">Valores em aberto calculados automaticamente.</p>
+        {% if request.pode_configurar %}
+        <button type="button" data-abrir-credito class="btn btn-secundario btn-sm">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="5" width="20" height="14" rx="2"/><path d="M2 10h20"/></svg>
+          Gerenciar crédito
+        </button>
+        {% else %}
+        <p class="text-xs text-ink-soft">Só quem acessa as configurações altera o crédito.</p>
+        {% endif %}
+      </div>
+    </section>
+  </div>
+
+  {# ---------- Parcelas em aberto ---------- #}
+  <section class="rounded-2xl border border-line bg-surface">
+    <div class="flex items-center justify-between gap-3 border-b border-line px-6 py-4">
+      <div class="flex items-center gap-3">
+        <span class="flex h-9 w-9 items-center justify-center rounded-lg bg-page text-ink-soft">
+          <svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z"/><path d="M14 2v4a2 2 0 0 0 2 2h4M10 9H8M16 13H8M16 17H8"/></svg>
+        </span>
+        <div>
+          <h3 class="font-semibold">Parcelas em aberto</h3>
+          <p class="text-xs text-ink-soft">Confira os documentos pendentes antes de liberar novas vendas a prazo.</p>
+        </div>
+      </div>
+      <span class="text-sm text-ink-soft">{{ f.parcelas_em_aberto|length }} em aberto</span>
+    </div>
+    <div class="px-6 py-8 text-center text-sm text-ink-soft">Nenhuma parcela em aberto.</div>
+  </section>
+
+  {# ---------- Últimas compras ---------- #}
+  <section class="rounded-2xl border border-line bg-surface">
+    <div class="flex items-center justify-between gap-3 border-b border-line px-6 py-4">
+      <div class="flex items-center gap-3">
+        <span class="flex h-9 w-9 items-center justify-center rounded-lg bg-page text-ink-soft">
+          <svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="8" cy="21" r="1"/><circle cx="19" cy="21" r="1"/><path d="M2.05 2.05h2l2.66 12.42a2 2 0 0 0 2 1.58h9.78a2 2 0 0 0 1.95-1.57l1.65-7.43H5.12"/></svg>
+        </span>
+        <div>
+          <h3 class="font-semibold">Últimas compras</h3>
+          <p class="text-xs text-ink-soft">As 5 compras mais recentes deste cliente.</p>
+        </div>
+      </div>
+    </div>
+    <div class="px-6 py-8 text-center text-sm text-ink-soft">Nenhuma compra registrada.</div>
+  </section>
+</div>
+
+{# Janela "Gerenciar crédito": o conteúdo vem de clientes/_credito_painel.html (HTMX) #}
+{% if request.pode_configurar %}
+<dialog id="dialogo-credito" aria-labelledby="credito-titulo" data-url-painel="{% url 'cliente_credito_painel' object.pk %}"
+        class="dialogo-animado m-auto w-[calc(100%-2rem)] max-w-5xl rounded-2xl border border-line bg-page p-0 text-ink shadow-2xl backdrop:bg-black/40">
+  <div class="sticky top-0 z-10 flex items-start justify-between border-b border-line bg-surface px-6 py-4">
+    <div class="flex items-center gap-3">
+      <span class="flex h-10 w-10 items-center justify-center rounded-xl bg-linear-to-br from-primary to-accent text-white shadow-sm shadow-primary/30">
+        <svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="5" width="20" height="14" rx="2"/><path d="M2 10h20"/></svg>
+      </span>
+      <div>
+        <h2 id="credito-titulo" class="text-lg font-semibold">Gerenciar crédito</h2>
+        <p class="text-xs text-ink-soft">{{ object }}</p>
+      </div>
+    </div>
+    <button type="button" data-fechar-dialogo title="Fechar" aria-label="Fechar"
+            class="-mr-2 inline-flex h-9 w-9 items-center justify-center rounded-full text-ink-soft transition
+                   hover:rotate-90 hover:bg-danger-soft hover:text-danger focus-visible:outline-none
+                   focus-visible:ring-2 focus-visible:ring-primary/40 [&_svg]:h-5 [&_svg]:w-5">
+      {% include "partials/icone_x.html" %}
+    </button>
+  </div>
+  <div id="credito-painel" class="p-6">
+    <div class="flex items-center justify-center gap-3 py-16 text-sm text-ink-soft">
+      <span class="h-5 w-5 animate-spin rounded-full border-2 border-line border-t-primary"></span> Carregando...
+    </div>
+  </div>
+</dialog>
+{% endif %}
+{% endwith %}

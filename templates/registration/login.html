@@ -2,54 +2,201 @@
 {% block title %}Entrar · Nexum{% endblock %}
 
 {% block content %}
-<div class="fixed top-4 right-4">
-  {% include "partials/theme_toggle.html" %}
-</div>
-<div class="min-h-screen flex flex-col items-center justify-center px-4">
-  <div class="w-full max-w-sm">
+<div class="min-h-screen flex flex-col bg-page">
+  <div class="flex-1 flex">
 
-    <div class="flex flex-col items-center mb-8">
+    {# ---------- Lado esquerdo: logo, frase e ilustração (só em telas grandes) ---------- #}
+    <section class="hidden lg:flex lg:w-[59%] flex-col px-12 pt-12 pb-10">
       {% include "partials/logo_mark.html" with classes="h-14 w-14" %}
-      <h1 class="mt-4 text-2xl font-semibold">Nexum</h1>
-      <p class="mt-1 text-sm text-ink-soft">Acesse sua conta para continuar</p>
-    </div>
 
-    <div class="bg-surface border border-line rounded-2xl shadow-sm p-8">
-      {% if form.errors %}
-      <div class="mb-4 rounded-lg bg-danger-soft border border-danger/20 text-danger text-sm p-3">
-        Usuário ou senha incorretos.
+      <div class="flex-1 flex flex-col items-center justify-center">
+        <h2 class="text-center text-[2.6rem] font-normal leading-[1.45] tracking-tight">
+          Sua empresa inteira,<br>
+          <span class="bg-linear-to-r from-brand-cyan to-primary bg-clip-text text-transparent">em um só lugar</span>.
+        </h2>
+
+        {# Ilustração: três telas de ERP sobrepostas, como celulares #}
+        <div class="relative mt-10 h-[330px] w-[380px]" aria-hidden="true">
+
+          {# Tela da esquerda: estoque #}
+          <div class="absolute left-0 top-12 h-[270px] w-[150px] -rotate-6 overflow-hidden rounded-[22px] border border-line bg-surface p-4 shadow-xl">
+            <p class="text-[11px] font-semibold">Estoque</p>
+            <ul class="mt-3 space-y-3 text-[10px] text-ink-soft">
+              <li><div class="h-12 rounded-lg bg-linear-to-br from-sky-200 to-sky-400"></div><p class="mt-1">Camiseta P · 128 un</p></li>
+              <li><div class="h-12 rounded-lg bg-linear-to-br from-indigo-200 to-indigo-400"></div><p class="mt-1">Boné azul · 64 un</p></li>
+              <li><div class="h-12 rounded-lg bg-linear-to-br from-cyan-200 to-cyan-400"></div><p class="mt-1">Tênis 42 · 3 un</p></li>
+            </ul>
+          </div>
+
+          {# Tela da direita: nota fiscal #}
+          <div class="absolute right-0 top-12 h-[270px] w-[150px] rotate-6 overflow-hidden rounded-[22px] border border-line bg-surface p-4 shadow-xl">
+            <p class="text-[11px] font-semibold">NF-e</p>
+            <div class="mt-3 space-y-2">
+              <div class="h-2 w-full rounded-full bg-line"></div>
+              <div class="h-2 w-4/5 rounded-full bg-line"></div>
+              <div class="h-2 w-3/5 rounded-full bg-line"></div>
+            </div>
+            <div class="mt-5 rounded-xl bg-primary-soft p-3">
+              <p class="text-[10px] text-ink-soft">Total</p>
+              <p class="text-sm font-semibold">R$ 1.249,90</p>
+            </div>
+            <div class="mt-4 space-y-2">
+              <div class="h-2 w-full rounded-full bg-line"></div>
+              <div class="h-2 w-2/3 rounded-full bg-line"></div>
+            </div>
+          </div>
+
+          {# Tela da frente: vendas #}
+          <div class="absolute left-1/2 top-0 h-[320px] w-[180px] -translate-x-1/2 overflow-hidden rounded-[26px] border border-line bg-surface p-4 shadow-2xl">
+            <div class="mx-auto h-1 w-16 rounded-full bg-line"></div>
+            <p class="mt-4 text-[11px] text-ink-soft">Vendas do mês</p>
+            <p class="text-xl font-semibold">R$ 48.320</p>
+            <div class="mt-6 flex h-36 items-end gap-1.5">
+              <div class="flex-1 rounded-t bg-linear-to-t from-primary to-brand-cyan" style="height:40%"></div>
+              <div class="flex-1 rounded-t bg-linear-to-t from-primary to-brand-cyan" style="height:55%"></div>
+              <div class="flex-1 rounded-t bg-linear-to-t from-primary to-brand-cyan" style="height:35%"></div>
+              <div class="flex-1 rounded-t bg-linear-to-t from-primary to-brand-cyan" style="height:70%"></div>
+              <div class="flex-1 rounded-t bg-linear-to-t from-primary to-brand-cyan" style="height:60%"></div>
+              <div class="flex-1 rounded-t bg-linear-to-t from-primary to-brand-cyan" style="height:100%"></div>
+            </div>
+            <div class="mt-5 h-7 rounded-full border border-line"></div>
+          </div>
+
+          {# Selos flutuando em volta #}
+          <div class="absolute left-12 top-2 flex items-center gap-1.5 rounded-full bg-surface px-3 py-1.5 text-[11px] font-medium shadow-lg ring-1 ring-line">
+            <span class="h-2 w-2 rounded-full bg-success"></span> 3 novos pedidos
+          </div>
+          <div class="absolute -right-2 top-24 flex h-8 items-center gap-1 rounded-full bg-success px-3 text-[11px] font-semibold text-white shadow-lg">
+            <svg class="h-3.5 w-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"
+                 stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>
+            Autorizada
+          </div>
+          <div class="absolute -left-4 bottom-10 rounded-2xl bg-linear-to-br from-brand-cyan to-primary px-3 py-2 text-sm font-semibold text-white shadow-lg">
+            +12%
+          </div>
+          <div class="absolute -right-3 bottom-6 h-14 w-14 rounded-full bg-linear-to-br from-sky-300 to-primary p-[3px] shadow-lg">
+            <div class="flex h-full w-full items-center justify-center rounded-full bg-surface text-sm font-semibold text-primary-text">NT</div>
+          </div>
+        </div>
       </div>
-      {% endif %}
+    </section>
 
-      <form method="post" class="space-y-4">
-        {% csrf_token %}
-        <input type="hidden" name="next" value="{{ next }}">
+    {# ---------- Lado direito: formulário ---------- #}
+    <section class="relative flex-1 bg-surface lg:border-l lg:border-line">
+      <div class="absolute top-4 right-4">
+        {% include "partials/theme_toggle.html" %}
+      </div>
 
-        <div>
-          <label for="id_username" class="block text-sm font-medium">Usuário</label>
-          <input id="id_username" name="username" type="text" required autofocus
-                 autocomplete="username" value="{{ form.username.value|default:'' }}"
-                 class="mt-1 w-full rounded-lg border border-line px-3 py-2
-                        focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/30">
+      <div class="mx-auto w-full max-w-[34rem] px-6 pt-24 pb-12 lg:px-10">
+        {# Logo só no celular, já que o lado esquerdo some #}
+        <div class="mb-10 flex justify-center lg:hidden">
+          {% include "partials/logo_mark.html" with classes="h-14 w-14" %}
         </div>
 
-        <div>
-          <label for="id_password" class="block text-sm font-medium">Senha</label>
-          <input id="id_password" name="password" type="password" required
-                 autocomplete="current-password"
-                 class="mt-1 w-full rounded-lg border border-line px-3 py-2
-                        focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/30">
+        <h1 class="text-lg font-semibold">Entrar no Nexum</h1>
+        {% if request.tenant.nome %}
+        <p class="mt-0.5 text-sm text-ink-soft">{{ request.tenant.nome }}</p>
+        {% endif %}
+
+        {% if form.errors %}
+        <div class="mt-6 rounded-xl bg-danger-soft border border-danger/20 text-danger text-sm p-3" role="alert">
+          E-mail ou senha incorretos.
         </div>
+        {% endif %}
 
-        <button type="submit"
-                class="w-full rounded-lg bg-primary text-white font-medium py-2.5
-                       hover:bg-primary-hover transition">
-          Entrar
-        </button>
-      </form>
-    </div>
+        <form method="post" class="mt-8 space-y-3" data-form-login>
+          {% csrf_token %}
+          <input type="hidden" name="next" value="{{ next }}">
 
-    <p class="mt-8 text-center text-xs text-ink-soft">Nexum · Nórtica Tecnologia</p>
+          {# O nome do campo fica dentro dele e sobe quando a pessoa digita #}
+          <div class="relative">
+            <input id="id_username" name="username" type="text" required autofocus placeholder=" "
+                   autocomplete="username" autocapitalize="none" value="{{ form.username.value|default:'' }}"
+                   class="peer h-[60px] w-full rounded-2xl border border-line bg-surface px-4 pt-5 pb-1.5 text-sm
+                          focus:outline-none focus:border-primary">
+            <label for="id_username"
+                   class="pointer-events-none absolute left-4 top-2.5 text-xs text-ink-soft transition-all
+                          peer-placeholder-shown:top-1/2 peer-placeholder-shown:-translate-y-1/2 peer-placeholder-shown:text-sm
+                          peer-focus:top-2.5 peer-focus:translate-y-0 peer-focus:text-xs">
+              E-mail
+            </label>
+          </div>
+
+          <div class="relative">
+            <input id="id_password" name="password" type="password" required placeholder=" "
+                   autocomplete="current-password"
+                   class="peer h-[60px] w-full rounded-2xl border border-line bg-surface pl-4 pr-20 pt-5 pb-1.5 text-sm
+                          focus:outline-none focus:border-primary">
+            <label for="id_password"
+                   class="pointer-events-none absolute left-4 top-2.5 text-xs text-ink-soft transition-all
+                          peer-placeholder-shown:top-1/2 peer-placeholder-shown:-translate-y-1/2 peer-placeholder-shown:text-sm
+                          peer-focus:top-2.5 peer-focus:translate-y-0 peer-focus:text-xs">
+              Senha
+            </label>
+            <button type="button" data-mostrar-senha hidden
+                    class="absolute right-3 top-1/2 -translate-y-1/2 rounded-md px-2 py-1 text-sm font-semibold
+                           text-ink hover:text-ink-soft focus:outline-none focus-visible:ring-2 focus-visible:ring-primary/30"
+                    aria-controls="id_password" aria-pressed="false">
+              Mostrar
+            </button>
+          </div>
+
+          <button type="submit" data-entrar disabled
+                  class="mt-6 h-11 w-full rounded-full bg-primary text-sm font-semibold text-white transition
+                         hover:bg-primary-hover disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:bg-primary">
+            Entrar
+          </button>
+        </form>
+
+        <p class="mt-14 text-center text-sm font-semibold text-ink-soft">Nórtica Tecnologia</p>
+      </div>
+    </section>
   </div>
+
+  <footer class="border-t border-line py-5 text-center text-xs text-ink-soft">
+    Português (Brasil) · © {% now "Y" %} Nexum da Nórtica Tecnologia
+  </footer>
 </div>
+
+<script>
+  (function () {
+    var form = document.querySelector("[data-form-login]");
+    var usuario = form.querySelector("#id_username");
+    var senha = form.querySelector("#id_password");
+    var entrar = form.querySelector("[data-entrar]");
+    var mostrar = form.querySelector("[data-mostrar-senha]");
+
+    // O navegador pode preencher sozinho (senha salva) sem expor o valor ainda
+    function autopreenchido(campo) {
+      try { return campo.matches(":autofill"); } catch (e) {}
+      try { return campo.matches(":-webkit-autofill"); } catch (e) {}
+      return false;
+    }
+    function preenchido(campo) {
+      return campo.value.trim() !== "" || autopreenchido(campo);
+    }
+
+    // "Entrar" só libera com usuário e senha preenchidos
+    function atualizar() {
+      entrar.disabled = !(preenchido(usuario) && preenchido(senha));
+      mostrar.hidden = senha.value === "";
+    }
+
+    // Mostrar / ocultar a senha
+    mostrar.addEventListener("click", function () {
+      var visivel = senha.type === "password";
+      senha.type = visivel ? "text" : "password";
+      mostrar.textContent = visivel ? "Ocultar" : "Mostrar";
+      mostrar.setAttribute("aria-pressed", visivel ? "true" : "false");
+      senha.focus();
+    });
+
+    usuario.addEventListener("input", atualizar);
+    senha.addEventListener("input", atualizar);
+    atualizar();
+    // Dá tempo para o preenchimento automático do navegador acontecer
+    setTimeout(atualizar, 200);
+    setTimeout(atualizar, 800);
+  })();
+</script>
 {% endblock %}

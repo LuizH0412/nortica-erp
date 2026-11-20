@@ -1,8 +1,13 @@
+# Ambiente virtual e segredos
 .venv/
 .env
-__pycache__/
-*.pyc.venv/
-.env
+
+# Python
 __pycache__/
 *.pyc
+
+# CSS gerado pelo Tailwind
 assets/css/tailwind.css
+
+# Binário do Tailwind baixado pelo django-tailwind-cli
+.django_tailwind_cli/

@@ -1,0 +1,13 @@
+{% comment %}
+Campo de marcação múltipla (ModelMultipleChoiceField) desenhado como pílulas. Uso: include com campo=form.tags
+O <div> tem id "pilulas_<nome>" e data-pilulas="<nome do campo>" para a janela do "+" atualizar as opções.
+{% endcomment %}
+<div id="pilulas_{{ campo.html_name }}" data-pilulas="{{ campo.html_name }}" class="flex flex-wrap items-center gap-2">
+  {% for opcao in campo %}
+  <label class="pilula">
+    <input type="checkbox" name="{{ campo.html_name }}" value="{{ opcao.data.value }}" {% if opcao.data.selected %}checked{% endif %}>
+    <span>{{ opcao.choice_label }}</span>
+  </label>
+  {% endfor %}
+  <span data-vazio class="text-sm text-ink-soft {% if campo.field.queryset.exists %}hidden{% endif %}">{{ vazio|default:"Nenhuma opção cadastrada. Use o + para cadastrar." }}</span>
+</div>

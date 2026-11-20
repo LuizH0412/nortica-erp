@@ -1,0 +1,308 @@
+{% extends "base_app.html" %}
+{% block title %}{{ titulo }} · Nexum{% endblock %}
+{% block page_title %}Clientes{% endblock %}
+
+{% block page %}
+<div class="max-w-7xl space-y-5">
+  <div class="flex flex-wrap items-center justify-between gap-3">
+    <nav class="text-sm text-ink-soft">
+      <a href="{% url 'cliente_lista' %}" class="hover:text-ink">Clientes</a>
+      <span class="mx-1">/</span>
+      <span class="text-ink font-medium">{{ titulo }}</span>
+    </nav>
+    <div class="flex flex-wrap items-center gap-4">
+      {% include "partials/interruptor.html" with campo=form.ativo form_id="form-cliente" %}
+      <div class="flex items-center gap-2">
+        <a href="{% url 'cliente_lista' %}" class="btn btn-secundario">{% include "partials/icone_voltar.html" %} Voltar</a>
+        {% if object %}
+        <a href="{% url 'cliente_criar' %}" class="btn btn-novo">{% include "partials/icone_mais.html" %} Novo cadastro</a>
+        <button type="submit" form="form-excluir-cliente" class="btn btn-perigo">{% include "partials/icone_lixeira.html" %} Excluir</button>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+
+  {% if form.non_field_errors %}
+  <div class="rounded-lg bg-danger-soft border border-danger/20 text-danger text-sm p-3">{{ form.non_field_errors }}</div>
+  {% endif %}
+
+  <div class="bg-surface border border-line rounded-xl">
+    <div class="abas m-4 mb-0">
+      <button type="button" data-aba="dados" class="aba">
+        Dados cadastrais <span data-ponto class="hidden h-2 w-2 rounded-full bg-danger"></span>
+      </button>
+      <button type="button" data-aba="enderecos" class="aba">Outros endereços{% if enderecos %} <span class="rounded-full bg-primary-soft px-1.5 text-[10px] font-semibold text-primary-text">{{ enderecos|length }}</span>{% endif %}</button>
+      <button type="button" data-aba="financeiro" class="aba">Financeiro</button>
+      <button type="button" data-aba="contatos" class="aba">Contatos <span class="rounded-full bg-page px-1.5 text-[10px] text-ink-soft">em breve</span></button>
+    </div>
+
+    <div class="p-6">
+      <!-- ABA: DADOS CADASTRAIS -->
+      <form method="post" id="form-cliente" data-painel="dados" class="space-y-5" novalidate
+            action="{% if object %}{% url 'cliente_editar' object.pk %}{% else %}{% url 'cliente_criar' %}{% endif %}">
+        {% csrf_token %}
+        <p id="aviso_consulta" class="hidden"></p>
+
+        <div class="grid grid-cols-1 gap-4 sm:grid-cols-6 lg:grid-cols-12">
+          <div class="sm:col-span-3 lg:col-span-2">{% include "partials/campo.html" with campo=form.pessoa %}</div>
+          <div class="sm:col-span-3 lg:col-span-3">
+            <label for="id_documento" class="block text-sm font-medium" data-rotulo-pf="CPF" data-rotulo-pj="CNPJ">CPF/CNPJ</label>
+            <div class="flex gap-2">
+              {{ form.documento }}
+              <button type="button" id="btn-buscar-cnpj" data-so-pj title="Buscar os dados da empresa pelo CNPJ" class="btn-campo">
+                {% include "partials/icone_busca.html" %}
+              </button>
+            </div>
+            {% for erro in form.documento.errors %}<p class="mt-1 text-xs text-danger" data-erro>{{ erro }}</p>{% endfor %}
+          </div>
+          <div class="sm:col-span-2 lg:col-span-2">{% include "partials/campo.html" with campo=form.inscricao_estadual %}</div>
+          <div class="sm:col-span-2 lg:col-span-2">{% include "partials/campo.html" with campo=form.inscricao_municipal %}</div>
+          <div class="sm:col-span-2 lg:col-span-3">{% include "partials/campo.html" with campo=form.contribuinte %}</div>
+
+          <div class="sm:col-span-3 lg:col-span-6">
+            <label for="id_nome_fantasia" class="block text-sm font-medium">
+              <span class="text-danger" data-so-pj>*</span><span data-rotulo-pf="Apelido" data-rotulo-pj="Nome fantasia">Nome fantasia</span>
+            </label>
+            {{ form.nome_fantasia }}
+            {% for erro in form.nome_fantasia.errors %}<p class="mt-1 text-xs text-danger" data-erro>{{ erro }}</p>{% endfor %}
+          </div>
+          <div class="sm:col-span-3 lg:col-span-6">
+            <label for="id_razao_social" class="block text-sm font-medium">
+              <span class="text-danger">*</span><span data-rotulo-pf="Nome completo" data-rotulo-pj="Razão social">Razão social</span>
+            </label>
+            {{ form.razao_social }}
+            {% for erro in form.razao_social.errors %}<p class="mt-1 text-xs text-danger" data-erro>{{ erro }}</p>{% endfor %}
+          </div>
+
+          <div class="sm:col-span-2 lg:col-span-3">
+            <label for="id_cep" class="block text-sm font-medium">{{ form.cep.label }}</label>
+            <div class="flex gap-2">
+              {{ form.cep }}
+              <button type="button" id="btn-buscar-cep" title="Buscar o endereço pelo CEP" class="btn-campo">
+                {% include "partials/icone_busca.html" %}
+              </button>
+            </div>
+            {% for erro in form.cep.errors %}<p class="mt-1 text-xs text-danger" data-erro>{{ erro }}</p>{% endfor %}
+          </div>
+          <div class="sm:col-span-4 lg:col-span-7">{% include "partials/campo.html" with campo=form.logradouro %}</div>
+          <div class="sm:col-span-2 lg:col-span-2">{% include "partials/campo.html" with campo=form.numero %}</div>
+
+          <div class="sm:col-span-3 lg:col-span-6">{% include "partials/campo.html" with campo=form.complemento %}</div>
+          <div class="sm:col-span-3 lg:col-span-6">{% include "partials/campo.html" with campo=form.ponto_referencia %}</div>
+
+          <div class="sm:col-span-3 lg:col-span-3">{% include "partials/campo.html" with campo=form.bairro %}</div>
+          <div class="sm:col-span-3 lg:col-span-3">
+            <label for="cidade_busca" class="block text-sm font-medium">Cidade - UF</label>
+            <div class="flex gap-2">
+              <div class="w-20 shrink-0">{{ form.uf }}</div>
+              <div class="relative min-w-0 flex-1">
+                <input type="text" id="cidade_busca" autocomplete="off" placeholder="Buscar cidade"
+                       value="{{ form.instance.municipio.nome|default:'' }}"
+                       class="mt-1 w-full rounded-lg border border-line bg-surface px-3 py-2
+                              focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/30">
+                {{ form.municipio }}
+                <ul id="cidade_opcoes"
+                    class="hidden absolute left-0 right-0 z-20 mt-1 max-h-60 overflow-auto
+                           bg-surface border border-line rounded-lg shadow-lg py-1"></ul>
+              </div>
+            </div>
+            {% for erro in form.municipio.errors %}<p class="mt-1 text-xs text-danger" data-erro>{{ erro }}</p>{% endfor %}
+          </div>
+          <div class="sm:col-span-3 lg:col-span-3">
+            <label for="id_area" class="block text-sm font-medium">{{ form.area.label }}</label>
+            <div class="flex gap-2">
+              {{ form.area }}
+              {% include "partials/botao_gerenciar.html" with tipo="area" titulo="Áreas" singular="área" artigo="a" alvo="id_area" uso_curto="cli." uso_longo="cliente(s)" %}
+            </div>
+          </div>
+          <div class="sm:col-span-3 lg:col-span-3">
+            {% include "partials/campo.html" with campo=form.atendente %}
+            {% if not object %}<p class="mt-1 text-xs text-ink-soft">Atendentes e vendedores. Já vem quem está cadastrando.</p>{% endif %}
+          </div>
+
+          <div class="sm:col-span-3 lg:col-span-3">{% include "partials/campo.html" with campo=form.indicador_finalidade %}</div>
+          <div class="sm:col-span-3 lg:col-span-3">
+            <label for="id_tipo_cliente" class="block text-sm font-medium">{{ form.tipo_cliente.label }}</label>
+            <div class="flex gap-2">
+              {{ form.tipo_cliente }}
+              {% include "partials/botao_gerenciar.html" with tipo="tipo_cliente" titulo="Tipos de cliente" singular="tipo de cliente" artigo="o" alvo="id_tipo_cliente" uso_curto="cli." uso_longo="cliente(s)" %}
+            </div>
+          </div>
+          <div class="sm:col-span-3 lg:col-span-3">
+            <label for="id_data_fundacao" class="block text-sm font-medium"
+                   data-rotulo-pf="Data de nascimento" data-rotulo-pj="Data de fundação">Data de fundação</label>
+            {{ form.data_fundacao }}
+            {% for erro in form.data_fundacao.errors %}<p class="mt-1 text-xs text-danger" data-erro>{{ erro }}</p>{% endfor %}
+          </div>
+          <div class="sm:col-span-3 lg:col-span-3 lg:pt-7">{% include "partials/interruptor.html" with campo=form.bloqueado %}</div>
+
+          <div class="sm:col-span-6 lg:col-span-12">
+            <div class="flex items-center justify-between gap-3">
+              <span class="block text-sm font-medium">{{ form.tags.label }}</span>
+              {% include "partials/botao_gerenciar.html" with tipo="tag" titulo="TAGs de classificação" singular="TAG" artigo="a" alvo="pilulas_tags" uso_curto="cli." uso_longo="cliente(s)" classe="mt-0 h-8" %}
+            </div>
+            <div class="mt-2 rounded-lg border border-line bg-page/40 p-3">
+              {% include "partials/pilulas.html" with campo=form.tags vazio="Nenhuma TAG cadastrada. Use o + para cadastrar." %}
+            </div>
+          </div>
+
+          <div class="sm:col-span-6 lg:col-span-12">{% include "partials/campo.html" with campo=form.observacao %}</div>
+        </div>
+
+        <div class="flex items-center gap-4 border-t border-line pt-5">
+          <button type="submit" class="btn btn-primario">{% include "partials/icone_check.html" %} Salvar</button>
+          <a href="{% url 'cliente_lista' %}" class="btn btn-texto">Cancelar</a>
+        </div>
+      </form>
+
+      <!-- ABAS AINDA SEM CONTEÚDO (aguardando a definição) -->
+      <!-- ABA: OUTROS ENDEREÇOS -->
+      <div data-painel="enderecos" class="hidden">
+        {% if not object %}
+        <p class="rounded-lg bg-primary-soft text-primary-text border border-line px-4 py-3 text-sm">
+          Salve os dados cadastrais do cliente primeiro. Depois volte aqui para adicionar outros endereços.
+        </p>
+        {% else %}
+        {% include "clientes/_enderecos.html" %}
+        {% endif %}
+      </div>
+      <!-- ABA: FINANCEIRO -->
+      <div data-painel="financeiro" class="hidden">
+        {% if not object %}
+        <p class="rounded-lg bg-primary-soft text-primary-text border border-line px-4 py-3 text-sm">
+          Salve os dados cadastrais do cliente primeiro para ver o financeiro dele.
+        </p>
+        {% else %}
+        {% include "clientes/_financeiro.html" %}
+        {% endif %}
+      </div>
+      <div data-painel="contatos" class="hidden">{% include "clientes/_em_breve.html" with aba="Contatos" %}</div>
+    </div>
+  </div>
+</div>
+
+{% if object %}
+<form method="post" action="{% url 'cliente_excluir' object.pk %}" id="form-excluir-cliente" hidden
+      data-confirmar-titulo="Excluir cliente?"
+      data-confirmar="“{{ object }}” será excluído."
+      data-confirmar-aviso="Esta ação não pode ser desfeita. Se não vai mais atender o cliente, prefira desativar.">
+  {% csrf_token %}
+</form>
+{% endif %}
+
+{% include "partials/gerenciador_cadastro.html" %}
+
+{% if object %}
+{% include "clientes/_dialogo_endereco.html" %}
+{{ enderecos_dados|json_script:"enderecos-dados" }}
+{% endif %}
+
+<script>
+  (function () {
+    function el(id) { return document.getElementById(id); }
+    var form = el("form-cliente");
+    Nexum.mascaras();
+    var mostrarAba = Nexum.abas();
+    var avisar = Nexum.aviso("aviso_consulta");
+    var endereco = Nexum.endereco({
+      form: form, avisar: avisar, mostrarAba: mostrarAba, abaEndereco: "dados",
+      urlCep: "{% url 'consulta_cep' %}", urlCidades: "{% url 'municipio_busca' %}"
+    });
+    Nexum.dialogos();
+    Nexum.gerenciador(form.querySelector("[name=csrfmiddlewaretoken]").value);
+
+    // ---------- Aba "Outros endereços": janela de adicionar / editar ----------
+    var dialogoEndereco = el("dialogo-endereco");
+    if (dialogoEndereco) {
+      var formEndereco = el("form-endereco");
+      var avisarEndereco = Nexum.aviso("end-aviso");
+      var cidadeEndereco = Nexum.endereco({
+        form: formEndereco, avisar: avisarEndereco, ids: Nexum.idsEndereco("end"),
+        urlCep: "{% url 'consulta_cep' %}", urlCidades: "{% url 'municipio_busca' %}"
+      });
+      var enderecos = JSON.parse(el("enderecos-dados").textContent);
+      var urlNovo = "{% if object %}{% url 'cliente_endereco_novo' object.pk %}{% endif %}";
+      var urlEditar = "{% if object %}{% url 'cliente_endereco_editar' object.pk 0 %}{% endif %}";
+      var CAMPOS = ["tipo", "cep", "numero", "logradouro", "ponto_referencia", "bairro", "complemento"];
+
+      function abrirEndereco(item) {
+        CAMPOS.forEach(function (c) {
+          var campo = el("id_end-" + c);
+          campo.value = item ? (item[c] || "") : (c === "tipo" ? "cobranca" : "");
+          campo.dispatchEvent(new Event("input", { bubbles: true }));  // aplica a máscara do CEP
+        });
+        if (item) cidadeEndereco.aplicarMunicipio({ id: item.municipio, nome: item.municipio_nome, uf: item.uf });
+        else cidadeEndereco.limparMunicipio();
+        formEndereco.action = item ? urlEditar.replace("/0/", "/" + item.id + "/") : urlNovo;
+        el("endereco-titulo").textContent = item ? "Editar endereço" : "Adicione um endereço";
+        formEndereco.querySelectorAll("[data-erro]").forEach(function (e) { e.remove(); });
+        avisarEndereco("");
+        dialogoEndereco.showModal();
+        el("id_end-tipo").focus();
+      }
+      document.querySelectorAll("[data-novo-endereco]").forEach(function (b) {
+        b.addEventListener("click", function () { abrirEndereco(null); });
+      });
+      document.querySelectorAll("[data-editar-endereco]").forEach(function (b) {
+        b.addEventListener("click", function () {
+          abrirEndereco(enderecos.find(function (e) { return String(e.id) === b.dataset.editarEndereco; }));
+        });
+      });
+      {% if abrir_endereco %}
+      // Voltou com erro: reabre a janela como estava
+      mostrarAba("enderecos");
+      dialogoEndereco.showModal();
+      {% endif %}
+    }
+
+    // ---------- Aba "Financeiro": janela "Gerenciar crédito" (conteúdo via HTMX) ----------
+    var dialogoCredito = el("dialogo-credito");
+    if (dialogoCredito) {
+      var houveAlteracao = false;
+      document.querySelectorAll("[data-abrir-credito]").forEach(function (b) {
+        b.addEventListener("click", function () {
+          dialogoCredito.showModal();
+          htmx.ajax("GET", dialogoCredito.dataset.urlPainel, { target: "#credito-painel" });
+        });
+      });
+      // O servidor avisa (HX-Trigger) quando lançou crédito ou mudou o limite
+      document.body.addEventListener("credito-alterado", function () { houveAlteracao = true; });
+      // Ao fechar, atualiza a aba Financeiro com os valores novos
+      dialogoCredito.addEventListener("close", function () {
+        if (!houveAlteracao) return;
+        window.location.hash = "financeiro";
+        window.location.reload();
+      });
+    }
+
+    // ---------- Pessoa física x jurídica: rótulos, máscara e busca de CNPJ ----------
+    var pessoa = el("id_pessoa"), documento = el("id_documento");
+    function aplicarPessoa() {
+      var pj = pessoa.value === "J";
+      document.querySelectorAll("[data-rotulo-pf]").forEach(function (r) {
+        r.textContent = pj ? r.dataset.rotuloPj : r.dataset.rotuloPf;
+      });
+      document.querySelectorAll("[data-so-pj]").forEach(function (n) { n.classList.toggle("hidden", !pj); });
+      documento.dataset.mascara = pj ? "cnpj" : "cpf";
+      documento.placeholder = pj ? "00.000.000/0000-00" : "000.000.000-00";
+      documento.dispatchEvent(new Event("input", { bubbles: true }));
+    }
+    pessoa.addEventListener("change", aplicarPessoa);
+    aplicarPessoa();
+
+    // ---------- Consulta de CNPJ (pessoa jurídica) ----------
+    el("btn-buscar-cnpj").addEventListener("click", function () {
+      var url = "{% url 'consulta_cnpj' %}?documento=" + encodeURIComponent(documento.value);
+      Nexum.consultar(url, this, avisar, function (d) {
+        ["razao_social", "nome_fantasia", "cep", "logradouro", "numero", "complemento", "bairro"]
+          .forEach(function (c) { Nexum.preencher("id_" + c, d[c]); });
+        if (endereco.aplicarMunicipio(d.municipio)) {
+          avisar("Dados preenchidos a partir da Receita Federal. Confira antes de salvar.", "sucesso");
+        } else {
+          avisar("Dados preenchidos, mas não conseguimos identificar a cidade. Escolha a cidade na lista.", "info");
+        }
+      });
+    });
+  })();
+</script>
+{% endblock %}

@@ -8,11 +8,11 @@
 </label>
 {% else %}
 <div>
-  <label for="{{ campo.id_for_label }}" class="block text-sm font-medium">{{ campo.label }}</label>
+  <label for="{{ campo.id_for_label }}" class="block text-sm font-medium">{% if campo.field.required %}<span class="text-danger">*</span>{% endif %}{{ campo.label }}</label>
   {{ campo }}
   {% if campo.help_text %}<div class="mt-1 text-xs text-ink-soft">{{ campo.help_text }}</div>{% endif %}
 </div>
 {% endif %}
 {% for erro in campo.errors %}
-<p class="mt-1 text-xs text-danger">{{ erro }}</p>
+<p class="mt-1 text-xs text-danger" data-erro>{{ erro }}</p>
 {% endfor %}

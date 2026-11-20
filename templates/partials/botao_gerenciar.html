@@ -1,0 +1,17 @@
+{% comment %}
+Botão "+" que abre a janela de gestão de um cadastro simples (função, setor, tipo de cliente, TAG...).
+Uso: include com tipo="funcao" titulo="Funções" singular="função" artigo="a" alvo="id_funcao"
+     uso_curto="func." uso_longo="funcionário(s)"
+A página precisa ter {% include "partials/gerenciador_cadastro.html" %} e chamar Nexum.gerenciador(csrf).
+{% endcomment %}
+<button type="button" data-gerenciar data-alvo="{{ alvo }}"
+        data-titulo="{{ titulo }}" data-singular="{{ singular }}" data-artigo="{{ artigo|default:'o' }}"
+        data-uso-curto="{{ uso_curto }}" data-uso-longo="{{ uso_longo }}"
+        data-url-lista="{% url 'cadastro_simples_lista' tipo %}"
+        data-url-criar="{% url 'cadastro_simples_criar' tipo %}"
+        data-url-salvar="{% url 'cadastro_simples_salvar' tipo 0 %}"
+        data-url-excluir="{% url 'cadastro_simples_excluir' tipo 0 %}"
+        title="Cadastrar, editar ou excluir {{ titulo|lower }}" aria-label="Gerenciar {{ titulo|lower }}"
+        class="btn-campo {{ classe }}">
+  {% include "partials/icone_mais.html" %}
+</button>

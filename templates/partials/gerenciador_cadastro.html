@@ -1,0 +1,46 @@
+{% comment %}
+Janela de gestão de cadastros simples (função, setor...), aberta pelo "+" ao lado do campo.
+O botão que abre informa tudo por data-*:
+  data-gerenciar  data-titulo="Funções" data-singular="função" data-alvo="id_funcao"
+  data-url-lista  data-url-criar  data-url-salvar (com /0/ no lugar do id)  data-url-excluir (idem)
+O comportamento fica em Nexum.gerenciador() (assets/js/nexum.js).
+{% endcomment %}
+<dialog id="gerenciador" aria-labelledby="gerenciador-titulo"
+        class="dialogo-animado m-auto w-full max-w-lg rounded-2xl border border-line bg-surface p-0 text-ink shadow-2xl backdrop:bg-black/40">
+  <div class="flex items-center justify-between border-b border-line px-6 py-4">
+    <div>
+      <h2 id="gerenciador-titulo" class="font-semibold">Cadastros</h2>
+      <p class="text-xs text-ink-soft">Clique no nome para usar no cadastro.</p>
+    </div>
+    <button type="button" data-fechar-dialogo title="Fechar" aria-label="Fechar"
+            class="-mr-2 inline-flex h-9 w-9 items-center justify-center rounded-full text-ink-soft transition
+                   hover:rotate-90 hover:bg-danger-soft hover:text-danger
+                   focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40 [&_svg]:h-5 [&_svg]:w-5">
+      {% include "partials/icone_x.html" %}
+    </button>
+  </div>
+
+  <div class="space-y-4 px-6 py-4">
+    <div class="relative">
+      <span class="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-ink-soft">
+        {% include "partials/icone_busca.html" %}
+      </span>
+      <input type="search" id="gerenciador-busca" autocomplete="off" placeholder="Pesquisar"
+             class="w-full rounded-lg border border-line bg-surface py-2 pl-9 pr-3 text-sm
+                    focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/30">
+    </div>
+
+    <p id="gerenciador-aviso" class="hidden" role="status"></p>
+
+    <ul id="gerenciador-lista" class="max-h-72 divide-y divide-line overflow-y-auto rounded-xl border border-line"></ul>
+  </div>
+
+  <div class="flex gap-2 border-t border-line bg-page/60 px-6 py-4 rounded-b-2xl">
+    <input type="text" id="gerenciador-novo" maxlength="60" autocomplete="off" placeholder="Nome para cadastrar"
+           class="min-w-0 flex-1 rounded-lg border border-line bg-surface px-3 py-2 text-sm
+                  focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/30">
+    <button type="button" id="gerenciador-adicionar" class="btn btn-novo">
+      {% include "partials/icone_mais.html" %} Cadastrar
+    </button>
+  </div>
+</dialog>

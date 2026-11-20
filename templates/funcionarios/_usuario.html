@@ -1,0 +1,50 @@
+{# Aba "Usuário" do funcionário: e-mail e senha de login #}
+<section class="bg-surface border border-line rounded-xl">
+  <div class="border-b border-line px-6 py-4">
+    <h2 class="font-semibold">Dados do usuário</h2>
+    <p class="text-xs text-ink-soft">
+      {% if object.usuario %}E-mail e senha que {{ object.nome }} usa para entrar no sistema.
+      {% else %}{{ object.nome }} ainda não tem usuário. Defina o e-mail e a senha de login.{% endif %}
+    </p>
+  </div>
+
+  <form method="post" action="{% url 'funcionario_usuario' object.pk %}" class="p-6" novalidate>
+    {% csrf_token %}
+    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+      <div class="sm:col-span-2">{% include "partials/campo.html" with campo=usuario_form.email %}</div>
+      <div class="hidden lg:block lg:col-span-2"></div>
+      <div>{% include "partials/campo.html" with campo=usuario_form.password1 %}</div>
+      <div>{% include "partials/campo.html" with campo=usuario_form.password2 %}</div>
+    </div>
+    {% for erro in usuario_form.non_field_errors %}<p class="mt-2 text-xs text-danger" data-erro>{{ erro }}</p>{% endfor %}
+
+    <div class="mt-6 flex flex-wrap items-center gap-3">
+      <button type="submit"
+              class="btn btn-primario">{% include "partials/icone_check.html" %} Salvar</button>
+      {% if object.usuario and not eh_o_proprio %}
+      <button type="submit" form="form-desvincular"
+              class="btn btn-aviso">{% include "partials/icone_desvincular.html" %} Desvincular usuário</button>
+      {% endif %}
+
+      {% if object.usuario and not acessos %}
+      <p class="flex items-center gap-2 text-sm text-ink">
+        <span class="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-warning text-xs font-bold text-white">!</span>
+        O usuário só terá acesso ao sistema depois que você adicionar os perfis de acesso abaixo.
+      </p>
+      {% elif object.usuario and not object.usuario.is_active %}
+      <p class="flex items-center gap-2 text-sm text-ink">
+        <span class="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-warning text-xs font-bold text-white">!</span>
+        Este usuário está bloqueado porque o funcionário está desativado.
+      </p>
+      {% endif %}
+    </div>
+  </form>
+
+  {% if object.usuario and not eh_o_proprio %}
+  <form method="post" action="{% url 'funcionario_desvincular' object.pk %}" id="form-desvincular"
+        data-confirmar="O usuário {{ object.usuario.email }} ficará bloqueado e sem perfis de acesso. Ele continua na lista de usuários."
+        data-confirmar-titulo="Desvincular usuário?" data-confirmar-tipo="aviso" data-confirmar-botao="Desvincular">
+    {% csrf_token %}
+  </form>
+  {% endif %}
+</section>

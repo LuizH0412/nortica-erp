@@ -1,0 +1,42 @@
+{% extends "base_app.html" %}
+{% load static %}
+{% block title %}Usuários · Nexum{% endblock %}
+{% block page_title %}Usuários{% endblock %}
+
+{% block page %}
+<div class="flex flex-wrap items-center justify-between gap-3 mb-4">
+  <form method="get" class="flex w-full max-w-xl flex-wrap items-center gap-2" onsubmit="return false">
+    <div class="relative min-w-60 flex-1">
+      <span class="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-ink-soft">
+        {% include "partials/icone_busca.html" %}
+      </span>
+      {# Busca ao vivo: o HTMX troca só a tabela enquanto a pessoa digita #}
+      <input type="search" name="q" value="{{ q }}" placeholder="Buscar por nome ou e-mail"
+             hx-get="{% url 'usuario_lista' %}" hx-trigger="input changed delay:300ms, search"
+             hx-target="#tabela-usuarios" hx-push-url="true" hx-include="closest form"
+             class="w-full rounded-lg border border-line bg-surface pl-9 pr-3 py-2 text-sm
+                    focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/30">
+    </div>
+    {% url 'usuario_lista' as url_usuarios %}
+    {% include "partials/filtro_situacao.html" with rotulo="Só bloqueados" htmx_url=url_usuarios htmx_alvo="#tabela-usuarios" %}
+  </form>
+  <a href="{% url 'usuario_criar' %}"
+     class="btn btn-novo">{% include "partials/icone_mais.html" %} Novo usuário</a>
+</div>
+
+<p class="mb-4 text-sm text-ink-soft">
+  Acessos ao sistema. Para funcionários, o acesso também pode ser criado na aba <strong>Usuário</strong> do cadastro de funcionário.
+</p>
+
+<div id="tabela-usuarios">
+  {% include "usuarios/_tabela.html" %}
+</div>
+
+<script>
+  Nexum.selecao();
+  // Depois de cada busca, a tabela nova precisa da seleção de novo
+  document.body.addEventListener("htmx:afterSwap", function (e) {
+    if (e.detail.target.id === "tabela-usuarios") Nexum.selecao();
+  });
+</script>
+{% endblock %}

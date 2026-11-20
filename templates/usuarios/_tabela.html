@@ -1,0 +1,74 @@
+<div class="bg-surface border border-line rounded-xl overflow-hidden">
+  <div class="overflow-x-auto">
+    <table class="w-full text-sm">
+      <thead class="bg-page text-ink-soft text-left">
+        <tr>
+          <th class="w-12 px-0 py-3">
+            <div class="flex items-center justify-center">
+              <input type="checkbox" data-selecionar-todos aria-label="Selecionar todos"
+                     class="h-4 w-4 rounded border-line accent-primary cursor-pointer">
+            </div>
+          </th>
+          <th class="w-12 px-0 py-3"></th>
+          {% include "partials/th_ordenar.html" with campo="nome" rotulo="Nome" %}
+          {% include "partials/th_ordenar.html" with campo="email" rotulo="E-mail (login)" %}
+          <th class="px-4 py-3 font-medium">Perfis de acesso</th>
+          {% include "partials/th_ordenar.html" with campo="funcionario" rotulo="Funcionário" %}
+          {% include "partials/th_ordenar.html" with campo="situacao" rotulo="Situação" %}
+        </tr>
+      </thead>
+      <tbody class="divide-y divide-line">
+        {% for u in usuarios %}
+        {% url 'usuario_editar' u.pk as url_abrir %}
+        <tr class="hover:bg-primary-soft/60 transition-colors">
+          <td class="px-0 py-3">
+            <div class="flex items-center justify-center">
+              <input type="checkbox" name="selecionados" value="{{ u.pk }}" data-selecionar
+                     aria-label="Selecionar {{ u }}"
+                     class="h-4 w-4 rounded border-line accent-primary cursor-pointer">
+            </div>
+          </td>
+          <td class="px-0 py-3">
+            <div class="flex items-center justify-center">
+              <a href="{{ url_abrir }}" title="Editar" aria-label="Editar {{ u }}"
+                 class="inline-flex rounded-md p-1.5 text-ink-soft hover:text-primary-text hover:bg-primary-soft transition">
+                {% include "partials/icone_lapis.html" %}
+              </a>
+            </div>
+          </td>
+          <td class="p-0 font-medium"><a href="{{ url_abrir }}" tabindex="-1" class="block px-4 py-3">{{ u.get_full_name|default:"—" }}</a></td>
+          <td class="p-0"><a href="{{ url_abrir }}" tabindex="-1" class="block px-4 py-3">{{ u.email }}</a></td>
+          <td class="p-0">
+            <a href="{{ url_abrir }}" tabindex="-1" class="block px-4 py-3">
+              {% for a in u.acessos.all %}{{ a.perfil.nome }} <span class="text-ink-soft">({{ a.empresa.unidade }})</span>{% if not forloop.last %}, {% endif %}
+              {% empty %}<span class="text-ink-soft">Sem perfis</span>{% endfor %}
+            </a>
+          </td>
+          <td class="p-0">
+            <a href="{{ url_abrir }}" tabindex="-1" class="block px-4 py-3">
+              {% if u.funcionario %}{{ u.funcionario.nome }}{% else %}<span class="text-ink-soft">—</span>{% endif %}
+            </a>
+          </td>
+          <td class="p-0">
+            <a href="{{ url_abrir }}" tabindex="-1" class="block px-4 py-3">
+              {% if u.is_active %}
+              <span class="rounded-full bg-success/15 text-success px-2.5 py-0.5 text-xs font-medium">Ativo</span>
+              {% else %}
+              <span class="rounded-full bg-ink-soft/15 text-ink-soft px-2.5 py-0.5 text-xs font-medium">Bloqueado</span>
+              {% endif %}
+            </a>
+          </td>
+        </tr>
+        {% empty %}
+        <tr>
+          <td colspan="7" class="px-4 py-10 text-center text-ink-soft">
+            {% if q %}Nenhum usuário {% if so_desativados %}bloqueado {% endif %}encontrado para "{{ q }}".{% elif so_desativados %}Nenhum usuário bloqueado.{% else %}Nenhum usuário ativo.{% endif %}
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+
+{% include "partials/paginacao.html" %}

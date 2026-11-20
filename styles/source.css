@@ -1,5 +1,6 @@
 @import "tailwindcss";
 @source "../templates";
+@source "../assets/js";
 
 /* Modo escuro por classe: ativa quando <html class="dark"> */
 @custom-variant dark (&:where(.dark, .dark *));
@@ -58,4 +59,100 @@
   --color-success: #16a34a;
   --color-warning: #f59e0b;
   --color-info: #0284c7;
+}
+/* ---------- Botões padrão do Nexum ----------
+   Uso: <a class="btn btn-primario">{% include "partials/icone_check.html" %} Salvar</a>
+   Cores: primario (salvar/confirmar), novo (novo cadastro), perigo (excluir),
+          secundario (voltar e ações neutras), aviso (ações de atenção), texto (cancelar). */
+@layer components {
+  .btn {
+    @apply inline-flex items-center justify-center gap-2 rounded-xl px-4 py-2.5 text-sm font-semibold
+           whitespace-nowrap select-none transition-all duration-200 ease-out
+           focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40
+           focus-visible:ring-offset-2 focus-visible:ring-offset-page
+           active:translate-y-0 active:scale-[0.98]
+           disabled:pointer-events-none disabled:opacity-40 disabled:shadow-none;
+  }
+  .btn svg { @apply h-4 w-4 shrink-0; }
+  .btn-sm { @apply rounded-lg px-3 py-1.5 text-xs; }
+  .btn-sm svg { @apply h-3.5 w-3.5; }
+
+  .btn-primario {
+    @apply bg-linear-to-r from-primary to-accent text-white shadow-md shadow-primary/25
+           hover:-translate-y-0.5 hover:shadow-lg hover:shadow-primary/40 hover:brightness-110;
+  }
+  .btn-novo {
+    @apply bg-linear-to-r from-amber-400 to-orange-500 text-white shadow-md shadow-orange-500/25
+           hover:-translate-y-0.5 hover:shadow-lg hover:shadow-orange-500/40 hover:brightness-105;
+  }
+  .btn-perigo {
+    @apply bg-linear-to-r from-rose-500 to-red-600 text-white shadow-md shadow-red-500/25
+           hover:-translate-y-0.5 hover:shadow-lg hover:shadow-red-500/40 hover:brightness-105;
+  }
+  .btn-secundario {
+    @apply border border-line bg-surface text-ink shadow-sm
+           hover:-translate-y-0.5 hover:border-primary/40 hover:text-primary-text hover:shadow-md;
+  }
+  .btn-aviso {
+    @apply border border-warning/50 bg-warning/10 text-ink
+           hover:-translate-y-0.5 hover:border-warning hover:bg-warning hover:text-white hover:shadow-md hover:shadow-warning/30;
+  }
+  .btn-perigo-suave {
+    @apply border border-danger/30 bg-danger-soft text-danger
+           hover:-translate-y-0.5 hover:border-danger hover:bg-danger hover:text-white hover:shadow-md hover:shadow-red-500/30;
+  }
+  .btn-texto { @apply text-ink-soft hover:bg-primary-soft hover:text-ink; }
+
+  /* Botão quadrado colado num campo (lupa do CEP, "+" da função, olho da senha) */
+  .btn-campo {
+    @apply mt-1 inline-flex shrink-0 items-center justify-center rounded-lg border border-line bg-surface px-3
+           text-ink-soft transition-all duration-200
+           hover:border-primary/40 hover:bg-primary-soft hover:text-primary-text
+           disabled:opacity-50;
+  }
+
+  /* Abas em pílula (segmentadas) */
+  .abas { @apply inline-flex flex-wrap gap-1 rounded-xl bg-page p-1; }
+  .aba {
+    @apply flex items-center gap-2 rounded-lg px-4 py-2 text-sm font-medium text-ink-soft transition-all duration-200
+           hover:text-ink;
+  }
+  .aba-ativa { @apply bg-surface text-primary-text shadow-sm hover:text-primary-text; }
+}
+
+/* ---------- Janelas (<dialog>) com entrada suave ---------- */
+@keyframes nexum-surgir {
+  from { opacity: 0; transform: translateY(10px) scale(0.96); }
+  to   { opacity: 1; transform: none; }
+}
+@keyframes nexum-escurecer {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+.dialogo-animado[open] { animation: nexum-surgir 0.22s cubic-bezier(0.2, 0.8, 0.2, 1); }
+.dialogo-animado[open]::backdrop { animation: nexum-escurecer 0.22s ease-out; }
+@media (prefers-reduced-motion: reduce) {
+  .dialogo-animado[open], .dialogo-animado[open]::backdrop { animation: none; }
+}
+
+/* Listas suspensas (seletor de empresa...) abrem com a mesma entrada suave das janelas */
+details[data-dropdown][open] > [data-dropdown-menu] {
+  animation: nexum-surgir 0.16s cubic-bezier(0.2, 0.8, 0.2, 1);
+  transform-origin: top right;
+}
+@media (prefers-reduced-motion: reduce) {
+  details[data-dropdown][open] > [data-dropdown-menu] { animation: none; }
+}
+
+/* ---------- Pílulas: marcação múltipla (TAGs...) ----------
+   <label class="pilula"><input type="checkbox" name="tags" value="1"><span>VIP</span></label> */
+@layer components {
+  .pilula { @apply relative inline-flex cursor-pointer select-none; }
+  .pilula > input { @apply sr-only; }
+  .pilula > span {
+    @apply inline-flex items-center gap-1 rounded-full border border-line bg-surface px-3 py-1.5 text-xs font-medium
+           text-ink-soft transition-all duration-150 hover:border-primary/40 hover:text-ink;
+  }
+  .pilula > input:checked + span { @apply border-transparent bg-linear-to-r from-primary to-accent text-white shadow-sm shadow-primary/30; }
+  .pilula > input:focus-visible + span { @apply ring-2 ring-primary/40 ring-offset-1 ring-offset-surface; }
 }

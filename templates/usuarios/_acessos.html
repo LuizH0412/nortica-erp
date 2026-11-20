@@ -1,0 +1,146 @@
+{% comment %}
+Quadro "Perfis de acesso e permissões para as empresas".
+Contexto: usuario_acessos, acessos, form_perfil, voltar (endereço para voltar), eh_o_proprio.
+Fica FORA de outros <form> (tem formulários próprios).
+{% endcomment %}
+<section class="bg-surface border border-line rounded-xl">
+  <div class="flex flex-wrap items-center justify-between gap-3 border-b border-line px-6 py-4">
+    <div>
+      <h2 class="font-semibold">Perfis de acesso e permissões para as empresas</h2>
+      <p class="text-xs text-ink-soft">A pessoa só entra nas empresas onde tem um perfil, com as permissões dele.</p>
+    </div>
+    {% if not eh_o_proprio %}
+    <button type="button" data-abrir-dialogo="dialogo-perfil"
+            class="btn btn-novo">
+      {% include "partials/icone_mais.html" %} Adicionar perfil
+    </button>
+    {% endif %}
+  </div>
+
+  <div class="p-6">
+    {% if eh_o_proprio %}
+    <p class="mb-4 rounded-lg bg-primary-soft text-primary-text border border-line px-3 py-2 text-sm">
+      Estes são os seus próprios perfis. Por segurança, outra pessoa com acesso às configurações precisa alterá-los.
+    </p>
+    {% endif %}
+
+    <form method="post" action="{% url 'usuario_acesso_remover' usuario_acessos.pk %}" id="form-remover-acessos">
+      {% csrf_token %}
+      <input type="hidden" name="next" value="{{ voltar }}">
+      <div class="overflow-x-auto rounded-lg border border-line">
+        <table class="w-full text-sm">
+          <thead class="bg-page text-ink-soft text-left">
+            <tr>
+              <th class="w-12 px-0 py-3">
+                <div class="flex items-center justify-center">
+                  <input type="checkbox" data-selecionar-todos aria-label="Selecionar todos"
+                         {% if eh_o_proprio %}disabled{% endif %}
+                         class="h-4 w-4 rounded border-line accent-primary cursor-pointer">
+                </div>
+              </th>
+              <th class="w-12 px-0 py-3"></th>
+              <th class="px-4 py-3 font-medium">Código</th>
+              <th class="px-4 py-3 font-medium">Perfil</th>
+              <th class="px-4 py-3 font-medium">Empresa</th>
+              <th class="px-4 py-3 font-medium">Permissões</th>
+            </tr>
+          </thead>
+          <tbody class="divide-y divide-line">
+            {% for a in acessos %}
+            <tr class="hover:bg-primary-soft/60 transition-colors">
+              <td class="px-0 py-3">
+                <div class="flex items-center justify-center">
+                  <input type="checkbox" name="acessos" value="{{ a.pk }}" data-selecionar
+                         aria-label="Selecionar {{ a.perfil }} em {{ a.empresa.unidade }}"
+                         {% if eh_o_proprio %}disabled{% endif %}
+                         class="h-4 w-4 rounded border-line accent-primary cursor-pointer">
+                </div>
+              </td>
+              <td class="px-0 py-3">
+                <div class="flex items-center justify-center">
+                  <a href="{% url 'perfil_editar' a.perfil.pk %}" title="Ver as permissões do perfil"
+                     aria-label="Ver as permissões do perfil {{ a.perfil }}"
+                     class="inline-flex rounded-md p-1.5 text-ink-soft hover:text-primary-text hover:bg-primary-soft transition">
+                    {% include "partials/icone_engrenagem.html" %}
+                  </a>
+                </div>
+              </td>
+              <td class="px-4 py-3 text-ink-soft">{{ a.perfil.pk }}</td>
+              <td class="px-4 py-3 font-medium">{{ a.perfil.nome }}</td>
+              <td class="px-4 py-3">{{ a.empresa.unidade }} <span class="text-ink-soft">· {{ a.empresa.nome_exibicao }}</span></td>
+              <td class="px-4 py-3 text-ink-soft">
+                {% if a.perfil.pode_configurar %}Acessa as configurações{% else %}Uso do sistema{% endif %}
+              </td>
+            </tr>
+            {% empty %}
+            <tr>
+              <td colspan="6" class="px-4 py-8 text-center text-ink-soft">
+                Nenhum perfil de acesso ainda. Clique em <strong>Adicionar perfil</strong>.
+              </td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+
+      {% if acessos and not eh_o_proprio %}
+      <button type="submit" data-excluir-selecionados disabled data-confirmar-titulo="Remover perfis de acesso?"
+              class="mt-4 btn btn-perigo-suave">{% include "partials/icone_lixeira.html" %} Excluir selecionados</button>
+      {% endif %}
+    </form>
+  </div>
+</section>
+
+{# Janela "Adicionar perfil" #}
+{% if not eh_o_proprio %}
+<dialog id="dialogo-perfil" class="dialogo-animado m-auto w-full max-w-lg rounded-xl border border-line bg-surface p-0 text-ink shadow-xl backdrop:bg-black/40">
+  <form method="post" action="{% url 'usuario_acesso_adicionar' usuario_acessos.pk %}" class="p-6 space-y-4">
+    {% csrf_token %}
+    <input type="hidden" name="next" value="{{ voltar }}">
+    <h2 class="font-semibold">Adicionar perfil de acesso</h2>
+    {% include "partials/campo.html" with campo=form_perfil.perfil %}
+    <fieldset>
+      <legend class="text-sm font-medium"><span class="text-danger">*</span>{{ form_perfil.empresas.label }}</legend>
+      <p class="text-xs text-ink-soft">É um perfil por empresa.</p>
+      <div class="mt-2 space-y-2">
+        {% for opcao in form_perfil.empresas %}
+        <label class="flex items-center gap-3 rounded-lg border border-line px-3 py-2 text-sm cursor-pointer hover:bg-primary-soft/60">
+          {{ opcao.tag }}
+          <span>{{ opcao.choice_label }}</span>
+        </label>
+        {% endfor %}
+
+        {# Empresas em que a pessoa já tem perfil: travadas, só para informar #}
+        {% for acesso in form_perfil.ja_vinculadas %}
+        <div class="flex items-center gap-3 rounded-lg border border-dashed border-line bg-page/60 px-3 py-2 text-sm text-ink-soft cursor-not-allowed"
+             title="Já tem perfil nesta empresa">
+          <input type="checkbox" checked disabled aria-label="{{ acesso.empresa }} (já vinculada)"
+                 class="h-4 w-4 rounded border-line accent-ink-soft">
+          <span class="min-w-0 flex-1 truncate">{{ acesso.empresa }}</span>
+          <span class="shrink-0 rounded-full bg-primary-soft px-2 py-0.5 text-xs font-medium text-primary-text">
+            já tem: {{ acesso.perfil.nome }}
+          </span>
+        </div>
+        {% endfor %}
+
+        {% if not form_perfil.tem_empresas_livres %}
+        <p class="rounded-lg bg-primary-soft px-3 py-2 text-sm text-primary-text">
+          {% if form_perfil.ja_vinculadas %}A pessoa já tem perfil em todas as empresas que você pode liberar.
+          {% else %}Nenhuma empresa em que você possa dar acesso.{% endif %}
+        </p>
+        {% endif %}
+      </div>
+      {% if form_perfil.ja_vinculadas %}
+      <p class="mt-3 text-xs text-ink-soft">
+        Para trocar o perfil de uma empresa, remova o atual na tabela e adicione o novo.
+      </p>
+      {% endif %}
+    </fieldset>
+    <div class="flex items-center justify-end gap-3 pt-2">
+      <button type="button" data-fechar-dialogo class="btn btn-texto">Cancelar</button>
+      <button type="submit" {% if not form_perfil.tem_empresas_livres %}disabled{% endif %}
+              class="btn btn-primario">{% include "partials/icone_check.html" %} Adicionar</button>
+    </div>
+  </form>
+</dialog>
+{% endif %}

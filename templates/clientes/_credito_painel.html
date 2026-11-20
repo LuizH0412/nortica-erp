@@ -1,0 +1,121 @@
+{% load formatos %}
+{% comment %}
+Conteúdo da janela "Gerenciar crédito" (carregado e atualizado por HTMX dentro de #credito-painel).
+Contexto: object (cliente), financeiro, extrato, limite_form, lancar_form, aviso.
+{% endcomment %}
+{% with f=financeiro e=extrato %}
+<div class="space-y-5">
+  {% if aviso %}
+  <div class="flex items-center gap-2 rounded-xl border border-success/30 bg-success/10 px-4 py-2.5 text-sm text-success" role="status">
+    {% include "partials/icone_check.html" %} {{ aviso }}
+  </div>
+  {% endif %}
+
+  {# ---------- Indicadores ---------- #}
+  <div class="grid gap-3 sm:grid-cols-3">
+    <div class="rounded-2xl border border-line bg-surface px-5 py-4">
+      <p class="text-xs font-medium uppercase tracking-wide text-ink-soft">Limite de crédito</p>
+      <p class="mt-1 text-2xl font-semibold">{{ f.limite|moeda }}</p>
+    </div>
+    <div class="rounded-2xl border border-success/30 bg-success/10 px-5 py-4">
+      <p class="text-xs font-medium uppercase tracking-wide text-success">Limite disponível</p>
+      <p class="mt-1 text-2xl font-semibold text-success">{{ f.disponivel|moeda }}</p>
+    </div>
+    <div class="rounded-2xl border border-primary/20 bg-primary-soft px-5 py-4">
+      <p class="text-xs font-medium uppercase tracking-wide text-primary-text">Crédito do cliente</p>
+      <p class="mt-1 text-2xl font-semibold text-primary-text">{{ f.saldo_credito_loja|moeda }}</p>
+    </div>
+  </div>
+
+  <div class="grid gap-5 lg:grid-cols-5">
+    {# ---------- Extrato ---------- #}
+    <section class="flex flex-col rounded-2xl border border-line bg-surface lg:col-span-3">
+      <div class="flex flex-wrap items-end justify-between gap-3 border-b border-line px-5 py-4">
+        <div>
+          <h3 class="font-semibold">Extrato de crédito</h3>
+          <p class="text-xs text-ink-soft">{{ e.de|date:"d/m/Y" }} a {{ e.ate|date:"d/m/Y" }}</p>
+        </div>
+        <form hx-get="{% url 'cliente_credito_painel' object.pk %}" hx-target="#credito-painel" class="flex flex-wrap items-end gap-2">
+          <label class="text-xs text-ink-soft">De
+            <input type="date" name="de" value="{{ e.de|date:'Y-m-d' }}"
+                   class="mt-0.5 block rounded-lg border border-line bg-surface px-2 py-1.5 text-sm focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/30">
+          </label>
+          <label class="text-xs text-ink-soft">Até
+            <input type="date" name="ate" value="{{ e.ate|date:'Y-m-d' }}"
+                   class="mt-0.5 block rounded-lg border border-line bg-surface px-2 py-1.5 text-sm focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/30">
+          </label>
+          <button type="submit" class="btn btn-secundario btn-sm">{% include "partials/icone_busca.html" %} Pesquisar</button>
+        </form>
+      </div>
+
+      <div class="max-h-80 flex-1 overflow-y-auto">
+        {% if e.movimentos %}
+        <ul class="divide-y divide-line">
+          {% for m in e.movimentos %}
+          <li class="flex items-center gap-3 px-5 py-3">
+            <span class="flex h-8 w-8 shrink-0 items-center justify-center rounded-full
+                         {% if m.tipo == 'C' %}bg-success/15 text-success{% else %}bg-danger-soft text-danger{% endif %}">
+              {% if m.tipo == 'C' %}
+              <svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 19V5M5 12l7-7 7 7"/></svg>
+              {% else %}
+              <svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14M19 12l-7 7-7-7"/></svg>
+              {% endif %}
+            </span>
+            <div class="min-w-0 flex-1">
+              <p class="truncate text-sm font-medium">
+                {{ m.descricao|default:m.get_tipo_display }}{% if m.pedido %} <span class="text-ink-soft">· Pedido {{ m.pedido }}</span>{% endif %}
+              </p>
+              <p class="text-xs text-ink-soft">{{ m.criado_em|date:"d/m/Y H:i" }}{% if m.usuario %} · {{ m.usuario }}{% endif %}</p>
+            </div>
+            <span class="shrink-0 text-sm font-semibold {% if m.tipo == 'C' %}text-success{% else %}text-danger{% endif %}">
+              {% if m.tipo == 'C' %}+{% else %}−{% endif %} {{ m.valor|moeda }}
+            </span>
+          </li>
+          {% endfor %}
+        </ul>
+        {% else %}
+        <div class="px-5 py-12 text-center text-sm text-ink-soft">Nenhuma movimentação neste período.</div>
+        {% endif %}
+      </div>
+
+      <dl class="space-y-1.5 rounded-b-2xl border-t border-line bg-page/50 px-5 py-4 text-sm">
+        <div class="flex justify-between"><dt class="text-ink-soft">Créditos no período</dt><dd class="font-medium text-success">{{ e.creditos|moeda }}</dd></div>
+        <div class="flex justify-between"><dt class="text-ink-soft">Débitos no período</dt><dd class="font-medium text-danger">{{ e.debitos|moeda }}</dd></div>
+        <div class="flex justify-between border-t border-line pt-2"><dt class="font-medium">Saldo do período</dt><dd class="text-base font-bold">{{ e.saldo|moeda }}</dd></div>
+      </dl>
+    </section>
+
+    <div class="space-y-5 lg:col-span-2">
+      {# ---------- Lançar crédito ---------- #}
+      <section class="rounded-2xl border border-line bg-surface">
+        <div class="border-b border-line px-5 py-4">
+          <h3 class="font-semibold">Lançar crédito</h3>
+          <p class="text-xs text-ink-soft">Ex.: devolução ou valor pago antecipado.</p>
+        </div>
+        <form hx-post="{% url 'cliente_credito_lancar' object.pk %}" hx-target="#credito-painel" class="space-y-3 px-5 py-4" novalidate>
+          {% csrf_token %}
+          <div class="grid grid-cols-2 gap-3">
+            <div>{% include "partials/campo.html" with campo=lancar_form.pedido %}</div>
+            <div>{% include "partials/campo.html" with campo=lancar_form.valor %}</div>
+          </div>
+          <button type="submit" class="btn btn-novo w-full">{% include "partials/icone_mais.html" %} Adicionar crédito</button>
+        </form>
+      </section>
+
+      {# ---------- Limite de crédito ---------- #}
+      <section class="rounded-2xl border border-line bg-surface">
+        <div class="border-b border-line px-5 py-4">
+          <h3 class="font-semibold">Limite de crédito</h3>
+          <p class="text-xs text-ink-soft">Atual: <strong class="text-ink">{{ f.limite|moeda }}</strong></p>
+        </div>
+        <form hx-post="{% url 'cliente_credito' object.pk %}" hx-target="#credito-painel" class="space-y-4 px-5 py-4" novalidate>
+          {% csrf_token %}
+          {% include "partials/campo.html" with campo=limite_form.limite_credito %}
+          {% include "partials/interruptor.html" with campo=limite_form.bloqueado %}
+          <button type="submit" class="btn btn-primario w-full">{% include "partials/icone_check.html" %} Salvar limite</button>
+        </form>
+      </section>
+    </div>
+  </div>
+</div>
+{% endwith %}

@@ -5,7 +5,7 @@ from django.conf import settings
 from django.core.management.base import BaseCommand, CommandError
 from django_tenants.utils import tenant_context
 
-from core.models import Usuario
+from contas.models import Usuario
 from instancias.models import Dominio, Instancia
 
 RESERVADOS = {"public", "www", "painel", "admin", "api", "suporte"}
@@ -44,16 +44,16 @@ class Command(BaseCommand):
         senha = secrets.token_urlsafe(18)
         with tenant_context(instancia):
             Usuario.objects.create_user(
-                username=settings.MASTER_USERNAME,
                 email=settings.MASTER_EMAIL,
                 password=senha,
-                nivel=Usuario.Nivel.MASTER,
+                first_name="Suporte Nexum",
+                master=True,
                 is_superuser=True,
             )
 
         self.stdout.write(self.style.SUCCESS(f"\nInstância criada: {nome} (código {codigo})"))
         self.stdout.write(f"Endereço: {dominio}")
-        self.stdout.write(f"Usuário:  {settings.MASTER_USERNAME}")
+        self.stdout.write(f"E-mail:   {settings.MASTER_EMAIL}")
         self.stdout.write(f"Senha:    {senha}")
         self.stdout.write(
             self.style.WARNING("Guarde a senha agora no gerenciador de senhas. Ela não será exibida de novo.")

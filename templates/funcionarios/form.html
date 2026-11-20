@@ -1,0 +1,214 @@
+{% extends "base_app.html" %}
+{% load static %}
+{% block title %}{{ titulo }} · Nexum{% endblock %}
+{% block page_title %}Funcionários{% endblock %}
+
+{% block page %}
+<div class="max-w-6xl space-y-5">
+
+  <div class="flex flex-wrap items-center justify-between gap-3">
+    <nav class="text-sm text-ink-soft">
+      <a href="{% url 'funcionario_lista' %}" class="hover:text-ink">Funcionários</a>
+      <span class="mx-1">/</span>
+      <span class="text-ink font-medium">{% if object %}{{ object.nome }}{% else %}Novo funcionário{% endif %}</span>
+    </nav>
+    <div class="flex items-center gap-4">
+      {% include "partials/interruptor.html" with campo=form.ativo form_id="form-funcionario" %}
+      <div class="flex items-center gap-2">
+        <a href="{% url 'funcionario_lista' %}"
+           class="btn btn-secundario">{% include "partials/icone_voltar.html" %} Voltar</a>
+        {% if object %}
+        <a href="{% url 'funcionario_criar' %}"
+           class="btn btn-novo">{% include "partials/icone_mais.html" %} Novo cadastro</a>
+        {% if object.usuario_id != request.user.pk %}
+        <button type="submit" form="form-excluir-funcionario"
+                class="btn btn-perigo">{% include "partials/icone_lixeira.html" %} Excluir</button>
+        {% endif %}
+        {% endif %}
+      </div>
+    </div>
+  </div>
+
+  {% if form.non_field_errors %}
+  <div class="rounded-lg bg-danger-soft border border-danger/20 text-danger text-sm p-3">
+    {{ form.non_field_errors }}
+  </div>
+  {% endif %}
+
+  <div class="bg-surface border border-line rounded-xl">
+    <div class="abas m-4 mb-0">
+      <button type="button" data-aba="dados"
+              class="aba">
+        Dados cadastrais <span data-ponto class="hidden h-2 w-2 rounded-full bg-danger"></span>
+      </button>
+      <button type="button" data-aba="usuario"
+              class="aba">
+        Usuário <span data-ponto class="hidden h-2 w-2 rounded-full bg-danger"></span>
+      </button>
+    </div>
+
+    <div class="p-6">
+      <!-- ABA: DADOS CADASTRAIS -->
+      <form method="post" id="form-funcionario" data-painel="dados" class="space-y-6" novalidate
+            action="{% if object %}{% url 'funcionario_editar' object.pk %}{% else %}{% url 'funcionario_criar' %}{% endif %}">
+        {% csrf_token %}
+        <p id="aviso_consulta" class="hidden"></p>
+
+        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+          <div class="sm:col-span-2">{% include "partials/campo.html" with campo=form.nome %}</div>
+
+          <div>
+            <label for="id_funcao" class="block text-sm font-medium"><span class="text-danger">*</span>{{ form.funcao.label }}</label>
+            <div class="flex gap-2">
+              {{ form.funcao }}
+              {% include "partials/botao_gerenciar.html" with tipo="funcao" titulo="Funções" singular="função" artigo="a" alvo="id_funcao" uso_curto="func." uso_longo="funcionário(s)" %}
+            </div>
+            {% for erro in form.funcao.errors %}<p class="mt-1 text-xs text-danger" data-erro>{{ erro }}</p>{% endfor %}
+          </div>
+          <div>
+            <label for="id_setor" class="block text-sm font-medium">{{ form.setor.label }}</label>
+            <div class="flex gap-2">
+              {{ form.setor }}
+              {% include "partials/botao_gerenciar.html" with tipo="setor" titulo="Setores" singular="setor" artigo="o" alvo="id_setor" uso_curto="func." uso_longo="funcionário(s)" %}
+            </div>
+            {% for erro in form.setor.errors %}<p class="mt-1 text-xs text-danger" data-erro>{{ erro }}</p>{% endfor %}
+          </div>
+
+          <div>{% include "partials/campo.html" with campo=form.cpf %}</div>
+          <div>{% include "partials/campo.html" with campo=form.rg %}</div>
+          <div>{% include "partials/campo.html" with campo=form.data_admissao %}</div>
+          <div>{% include "partials/campo.html" with campo=form.data_demissao %}</div>
+        </div>
+
+        <!-- Endereço -->
+        <div>
+          <h3 class="text-sm font-semibold text-ink-soft uppercase tracking-wide">Endereço</h3>
+          <div class="mt-3 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+            <div>
+              <label for="id_cep" class="block text-sm font-medium">{{ form.cep.label }}</label>
+              <div class="flex gap-2">
+                {{ form.cep }}
+                <button type="button" id="btn-buscar-cep" title="Buscar o endereço pelo CEP"
+                        class="btn-campo">
+                  {% include "partials/icone_busca.html" %}
+                </button>
+              </div>
+              {% for erro in form.cep.errors %}<p class="mt-1 text-xs text-danger" data-erro>{{ erro }}</p>{% endfor %}
+            </div>
+            <div class="sm:col-span-2">{% include "partials/campo.html" with campo=form.logradouro %}</div>
+            <div>{% include "partials/campo.html" with campo=form.numero %}</div>
+
+            <div>{% include "partials/campo.html" with campo=form.complemento %}</div>
+            <div>{% include "partials/campo.html" with campo=form.bairro %}</div>
+            <div class="sm:col-span-2">
+              <label for="cidade_busca" class="block text-sm font-medium">Cidade - UF</label>
+              <div class="flex gap-2">
+                <div class="w-28 shrink-0">{{ form.uf }}</div>
+                <div class="relative flex-1">
+                  <input type="text" id="cidade_busca" autocomplete="off"
+                         placeholder="Digite para buscar a cidade"
+                         value="{{ form.instance.municipio.nome|default:'' }}"
+                         class="mt-1 w-full rounded-lg border border-line bg-surface px-3 py-2
+                                focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/30">
+                  {{ form.municipio }}
+                  <ul id="cidade_opcoes"
+                      class="hidden absolute left-0 right-0 z-20 mt-1 max-h-60 overflow-auto
+                             bg-surface border border-line rounded-lg shadow-lg py-1"></ul>
+                </div>
+              </div>
+              {% for erro in form.municipio.errors %}<p class="mt-1 text-xs text-danger" data-erro>{{ erro }}</p>{% endfor %}
+            </div>
+
+            <div class="sm:col-span-2 lg:col-span-4">{% include "partials/campo.html" with campo=form.ponto_referencia %}</div>
+          </div>
+        </div>
+
+        <!-- Vendas -->
+        <div>
+          <h3 class="text-sm font-semibold text-ink-soft uppercase tracking-wide">Vendas</h3>
+          <div class="mt-3 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 items-start">
+            <div>{% include "partials/campo.html" with campo=form.desconto_maximo %}</div>
+            <div>{% include "partials/campo.html" with campo=form.comissao %}</div>
+            <div class="pt-6">{% include "partials/interruptor.html" with campo=form.supervisor %}</div>
+            <div data-so-supervisor>
+              <label for="id_cartao" class="block text-sm font-medium">{{ form.cartao.label }}</label>
+              <div class="flex gap-2">
+                {{ form.cartao }}
+                <button type="button" data-revelar="id_cartao" aria-pressed="false" title="Mostrar / ocultar"
+                        class="btn-campo">
+                  {% include "partials/icone_olho.html" %}
+                </button>
+              </div>
+              {% if form.cartao.help_text %}<div class="mt-1 text-xs text-ink-soft">{{ form.cartao.help_text }}</div>{% endif %}
+              {% for erro in form.cartao.errors %}<p class="mt-1 text-xs text-danger" data-erro>{{ erro }}</p>{% endfor %}
+            </div>
+          </div>
+        </div>
+
+        <div>{% include "partials/campo.html" with campo=form.observacao %}</div>
+
+        <div class="flex items-center gap-4 border-t border-line pt-5">
+          <button type="submit"
+                  class="btn btn-primario">{% include "partials/icone_check.html" %} Salvar</button>
+          <a href="{% url 'funcionario_lista' %}" class="btn btn-texto">Cancelar</a>
+        </div>
+      </form>
+
+      <!-- ABA: USUÁRIO (formulários próprios, fora do formulário de dados) -->
+      <div data-painel="usuario" class="hidden space-y-6">
+        {% if not object %}
+        <p class="rounded-lg bg-primary-soft text-primary-text border border-line px-4 py-3 text-sm">
+          Salve os dados cadastrais do funcionário primeiro. Depois volte aqui para criar o usuário de acesso dele.
+        </p>
+        {% else %}
+        {% include "funcionarios/_usuario.html" %}
+        {% if object.usuario %}
+        {% include "usuarios/_acessos.html" %}
+        {% endif %}
+        {% endif %}
+      </div>
+    </div>
+  </div>
+</div>
+
+{% if object and object.usuario_id != request.user.pk %}
+<form method="post" action="{% url 'funcionario_excluir' object.pk %}" id="form-excluir-funcionario" hidden
+      data-confirmar-titulo="Excluir funcionário?"
+      data-confirmar="“{{ object.nome }}” será excluído.{% if object.usuario %} O acesso ao sistema ({{ object.usuario.email }}) também será removido.{% endif %}"
+      data-confirmar-aviso="Esta ação não pode ser desfeita. Se a pessoa só saiu da empresa, prefira desativar.">
+  {% csrf_token %}
+</form>
+{% endif %}
+
+{# Janela de gestão de funções e setores (aberta pelo "+") #}
+{% include "partials/gerenciador_cadastro.html" %}
+
+<script>
+  (function () {
+    function el(id) { return document.getElementById(id); }
+    var form = el("form-funcionario");
+    Nexum.mascaras();
+    Nexum.revelar();
+    var mostrarAba = Nexum.abas();
+    var avisar = Nexum.aviso("aviso_consulta");
+    Nexum.endereco({
+      form: form, avisar: avisar, mostrarAba: mostrarAba, abaEndereco: "dados",
+      urlCep: "{% url 'consulta_cep' %}", urlCidades: "{% url 'municipio_busca' %}"
+    });
+
+    // Aba Usuário: perfis de acesso (seleção, excluir selecionados, janela de adicionar)
+    Nexum.selecao();
+    Nexum.excluirSelecionados();
+    Nexum.dialogos();
+
+    // O número do cartão só aparece para supervisor
+    var supervisor = el("id_supervisor"), cartao = document.querySelector("[data-so-supervisor]");
+    function alternarCartao() { cartao.classList.toggle("hidden", !supervisor.checked); }
+    supervisor.addEventListener("change", alternarCartao);
+    alternarCartao();
+
+    // Funções e setores: janela de gestão aberta pelo "+"
+    Nexum.gerenciador(form.querySelector("[name=csrfmiddlewaretoken]").value);
+  })();
+</script>
+{% endblock %}

@@ -1,0 +1,68 @@
+{# Aba "Outros endereços": lista + botão que abre a janela (clientes/_dialogo_endereco.html) #}
+<div class="flex flex-wrap items-center justify-between gap-3">
+  <p class="text-sm text-ink-soft">Endereços de cobrança, entrega, trabalho... além do endereço principal.</p>
+  <button type="button" data-novo-endereco class="btn btn-novo">{% include "partials/icone_mais.html" %} Endereço</button>
+</div>
+
+<div class="mt-4 overflow-hidden rounded-xl border border-line">
+  <div class="overflow-x-auto">
+    <table class="w-full text-sm">
+      <thead class="bg-page text-ink-soft text-left">
+        <tr>
+          <th class="w-12 px-0 py-3"></th>
+          <th class="px-4 py-3 font-medium">Tipo</th>
+          <th class="px-4 py-3 font-medium">Endereço</th>
+          <th class="px-4 py-3 font-medium">Bairro</th>
+          <th class="px-4 py-3 font-medium">Cidade</th>
+          <th class="px-4 py-3 font-medium">CEP</th>
+          <th class="w-12 px-0 py-3"></th>
+        </tr>
+      </thead>
+      <tbody class="divide-y divide-line">
+        {% for e in enderecos %}
+        <tr class="hover:bg-primary-soft/60 transition-colors">
+          <td class="px-0 py-3">
+            <div class="flex items-center justify-center">
+              <button type="button" data-editar-endereco="{{ e.pk }}" title="Editar" aria-label="Editar endereço {{ e }}"
+                      class="inline-flex rounded-md p-1.5 text-ink-soft hover:text-primary-text hover:bg-primary-soft transition">
+                {% include "partials/icone_lapis.html" %}
+              </button>
+            </div>
+          </td>
+          <td class="px-4 py-3">
+            <span class="rounded-full bg-primary-soft px-2.5 py-0.5 text-xs font-medium text-primary-text">{{ e.get_tipo_display }}</span>
+          </td>
+          <td class="px-4 py-3">
+            <button type="button" data-editar-endereco="{{ e.pk }}" class="text-left hover:text-primary-text">
+              {{ e.logradouro }}, {{ e.numero }}{% if e.complemento %} · {{ e.complemento }}{% endif %}
+              {% if e.ponto_referencia %}<span class="block text-xs text-ink-soft">{{ e.ponto_referencia }}</span>{% endif %}
+            </button>
+          </td>
+          <td class="px-4 py-3">{{ e.bairro }}</td>
+          <td class="px-4 py-3 whitespace-nowrap">{{ e.municipio.nome }}/{{ e.municipio.uf }}</td>
+          <td class="px-4 py-3 whitespace-nowrap">{% if e.cep %}{{ e.cep|slice:":5" }}-{{ e.cep|slice:"5:" }}{% else %}—{% endif %}</td>
+          <td class="px-0 py-3">
+            <div class="flex items-center justify-center">
+              <form method="post" action="{% url 'cliente_endereco_excluir' object.pk e.pk %}"
+                    data-confirmar-titulo="Excluir endereço?"
+                    data-confirmar="O endereço de {{ e.get_tipo_display|lower }} “{{ e.logradouro }}, {{ e.numero }}” será excluído.">
+                {% csrf_token %}
+                <button type="submit" title="Excluir" aria-label="Excluir endereço {{ e }}"
+                        class="inline-flex rounded-md p-1.5 text-ink-soft transition hover:bg-danger-soft hover:text-danger">
+                  {% include "partials/icone_lixeira.html" %}
+                </button>
+              </form>
+            </div>
+          </td>
+        </tr>
+        {% empty %}
+        <tr>
+          <td colspan="7" class="px-4 py-10 text-center text-ink-soft">
+            Nenhum outro endereço cadastrado. Clique em <strong>+ Endereço</strong> para adicionar.
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>

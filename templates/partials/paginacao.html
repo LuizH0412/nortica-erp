@@ -1,0 +1,15 @@
+{% if is_paginated %}
+<nav class="mt-4 flex items-center justify-between text-sm text-ink-soft">
+  <span>Página {{ page_obj.number }} de {{ paginator.num_pages }} · {{ paginator.count }} registro{{ paginator.count|pluralize }}</span>
+  <div class="flex gap-2">
+    {% if page_obj.has_previous %}
+    <a href="{% querystring page=page_obj.previous_page_number %}"
+       class="btn btn-secundario btn-sm">Anterior</a>
+    {% endif %}
+    {% if page_obj.has_next %}
+    <a href="{% querystring page=page_obj.next_page_number %}"
+       class="btn btn-secundario btn-sm">Próxima</a>
+    {% endif %}
+  </div>
+</nav>
+{% endif %}

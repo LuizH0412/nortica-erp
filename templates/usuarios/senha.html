@@ -1,0 +1,30 @@
+{% extends "base_app.html" %}
+{% block title %}Redefinir senha · Nexum{% endblock %}
+{% block page_title %}Usuários{% endblock %}
+
+{% block page %}
+<form method="post" class="max-w-lg space-y-5" novalidate>
+  {% csrf_token %}
+  <nav class="text-sm text-ink-soft">
+    <a href="{% url 'usuario_lista' %}" class="hover:text-ink">Usuários</a>
+    <span class="mx-1">/</span>
+    <a href="{% url 'usuario_editar' usuario.pk %}" class="hover:text-ink">{{ usuario }}</a>
+    <span class="mx-1">/</span>
+    <span class="text-ink font-medium">Redefinir senha</span>
+  </nav>
+
+  <div class="bg-surface border border-line rounded-xl p-6 space-y-4">
+    <p class="text-sm text-ink-soft">
+      Nova senha para <strong class="text-ink">{{ usuario.email }}</strong>. A pessoa usará esta senha no próximo login.
+    </p>
+    {% include "partials/campo.html" with campo=form.new_password1 %}
+    {% include "partials/campo.html" with campo=form.new_password2 %}
+  </div>
+
+  <div class="flex items-center gap-4">
+    <button type="submit"
+            class="btn btn-primario">{% include "partials/icone_check.html" %} Salvar nova senha</button>
+    <a href="{% url 'usuario_editar' usuario.pk %}" class="btn btn-texto">Cancelar</a>
+  </div>
+</form>
+{% endblock %}

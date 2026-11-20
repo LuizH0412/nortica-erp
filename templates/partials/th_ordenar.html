@@ -1,0 +1,26 @@
+{% comment %}
+Título de coluna ordenável. Uso: include com campo="nome" rotulo="Nome" (e opcional classe="...").
+Clicar ordena crescente; clicar de novo, decrescente. Mantém a busca e os filtros (volta para a página 1).
+Contexto: ordem (vem do OrdenacaoMixin).
+{% endcomment %}
+{% with decrescente="-"|add:campo %}
+<th class="px-4 py-3 font-medium {{ classe }}"
+    aria-sort="{% if ordem == campo %}ascending{% elif ordem == decrescente %}descending{% else %}none{% endif %}">
+  <a href="{% if ordem == campo %}{% querystring o=decrescente page=None %}{% else %}{% querystring o=campo page=None %}{% endif %}"
+     class="group inline-flex items-center gap-1.5 rounded-md transition-colors hover:text-ink
+            {% if ordem == campo or ordem == decrescente %}text-primary-text{% endif %}"
+     title="Ordenar por {{ rotulo|lower }}">
+    {{ rotulo }}
+    <span class="flex flex-col -space-y-1" aria-hidden="true">
+      <svg class="h-3 w-3 transition {% if ordem == campo %}opacity-100{% else %}opacity-30 group-hover:opacity-60{% endif %}"
+           viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
+        <path d="m18 15-6-6-6 6"/>
+      </svg>
+      <svg class="h-3 w-3 transition {% if ordem == decrescente %}opacity-100{% else %}opacity-30 group-hover:opacity-60{% endif %}"
+           viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
+        <path d="m6 9 6 6 6-6"/>
+      </svg>
+    </span>
+  </a>
+</th>
+{% endwith %}

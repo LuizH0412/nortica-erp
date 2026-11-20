@@ -1,0 +1,70 @@
+{% extends "base_app.html" %}
+{% load static %}
+{% block title %}Perfis de acesso · Nexum{% endblock %}
+{% block page_title %}Perfis de acesso{% endblock %}
+
+{% block page %}
+<div class="flex flex-wrap items-center justify-between gap-3 mb-4">
+  <p class="text-sm text-ink-soft">
+    Cada perfil reúne o que a pessoa pode fazer. Os perfis são dados por empresa, no usuário de cada um.
+  </p>
+  <a href="{% url 'perfil_criar' %}"
+     class="btn btn-novo">{% include "partials/icone_mais.html" %} Novo perfil</a>
+</div>
+
+<div class="bg-surface border border-line rounded-xl overflow-hidden">
+  <div class="overflow-x-auto">
+    <table class="w-full text-sm">
+      <thead class="bg-page text-ink-soft text-left">
+        <tr>
+          <th class="w-12 px-0 py-3">
+            <div class="flex items-center justify-center">
+              <input type="checkbox" data-selecionar-todos aria-label="Selecionar todos"
+                     class="h-4 w-4 rounded border-line accent-primary cursor-pointer">
+            </div>
+          </th>
+          <th class="w-12 px-0 py-3"></th>
+          {% include "partials/th_ordenar.html" with campo="codigo" rotulo="Código" %}
+          {% include "partials/th_ordenar.html" with campo="nome" rotulo="Nome" %}
+          {% include "partials/th_ordenar.html" with campo="permissoes" rotulo="Permissões" %}
+          {% include "partials/th_ordenar.html" with campo="usuarios" rotulo="Usuários" %}
+        </tr>
+      </thead>
+      <tbody class="divide-y divide-line">
+        {% for p in perfis %}
+        {% url 'perfil_editar' p.pk as url_abrir %}
+        <tr class="hover:bg-primary-soft/60 transition-colors">
+          <td class="px-0 py-3">
+            <div class="flex items-center justify-center">
+              <input type="checkbox" name="selecionados" value="{{ p.pk }}" data-selecionar
+                     aria-label="Selecionar {{ p }}"
+                     class="h-4 w-4 rounded border-line accent-primary cursor-pointer">
+            </div>
+          </td>
+          <td class="px-0 py-3">
+            <div class="flex items-center justify-center">
+              <a href="{{ url_abrir }}" title="Editar" aria-label="Editar {{ p }}"
+                 class="inline-flex rounded-md p-1.5 text-ink-soft hover:text-primary-text hover:bg-primary-soft transition">
+                {% include "partials/icone_lapis.html" %}
+              </a>
+            </div>
+          </td>
+          <td class="p-0 text-ink-soft"><a href="{{ url_abrir }}" tabindex="-1" class="block px-4 py-3">{{ p.pk }}</a></td>
+          <td class="p-0 font-medium"><a href="{{ url_abrir }}" tabindex="-1" class="block px-4 py-3">{{ p.nome }}</a></td>
+          <td class="p-0">
+            <a href="{{ url_abrir }}" tabindex="-1" class="block px-4 py-3">
+              {% if p.pode_configurar %}Acessa as configurações{% else %}<span class="text-ink-soft">Uso do sistema</span>{% endif %}
+            </a>
+          </td>
+          <td class="p-0"><a href="{{ url_abrir }}" tabindex="-1" class="block px-4 py-3">{{ p.total_usuarios }}</a></td>
+        </tr>
+        {% empty %}
+        <tr><td colspan="6" class="px-4 py-10 text-center text-ink-soft">Nenhum perfil cadastrado.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<script>Nexum.selecao();</script>
+{% endblock %}

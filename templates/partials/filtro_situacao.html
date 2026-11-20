@@ -1,0 +1,22 @@
+{% comment %}
+Interruptor "Só desativados" da tela de pesquisa. Vai dentro do <form method="get"> da pesquisa;
+ao mudar, a pesquisa é refeita. Contexto: so_desativados (vem do FiltroSituacaoMixin).
+Parâmetros opcionais: rotulo (padrão "Só desativados"), htmx_url + htmx_alvo (busca ao vivo com HTMX).
+{% endcomment %}
+<label class="inline-flex shrink-0 cursor-pointer items-center gap-2 rounded-lg border border-line bg-surface px-3 py-2 text-sm transition
+              hover:bg-primary-soft/60 has-checked:border-warning has-checked:bg-warning/10">
+  <span class="relative inline-flex">
+    <input type="checkbox" name="desativados" value="1" class="peer sr-only"
+           {% if so_desativados %}checked{% endif %}
+           {% if htmx_url %}
+           hx-get="{{ htmx_url }}" hx-trigger="change" hx-target="{{ htmx_alvo }}" hx-push-url="true"
+           hx-include="closest form"
+           {% else %}
+           onchange="this.form.submit()"
+           {% endif %}>
+    <span class="h-5 w-9 rounded-full bg-line transition peer-checked:bg-warning
+                 peer-focus-visible:ring-2 peer-focus-visible:ring-primary/30"></span>
+    <span class="absolute left-0.5 top-0.5 h-4 w-4 rounded-full bg-white shadow transition peer-checked:translate-x-4"></span>
+  </span>
+  {{ rotulo|default:"Só desativados" }}
+</label>

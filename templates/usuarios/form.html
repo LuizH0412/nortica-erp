@@ -1,0 +1,77 @@
+{% extends "base_app.html" %}
+{% load static %}
+{% block title %}{{ titulo }} · Nexum{% endblock %}
+{% block page_title %}Usuários{% endblock %}
+
+{% block page %}
+<div class="max-w-6xl space-y-5">
+  <div class="flex flex-wrap items-center justify-between gap-3">
+    <nav class="text-sm text-ink-soft">
+      <a href="{% url 'usuario_lista' %}" class="hover:text-ink">Usuários</a>
+      <span class="mx-1">/</span>
+      <span class="text-ink font-medium">{% if object %}{{ object }}{% else %}Novo usuário{% endif %}</span>
+    </nav>
+    <div class="flex items-center gap-4">
+      {% include "partials/interruptor.html" with campo=form.is_active form_id="form-usuario" %}
+      <div class="flex items-center gap-2">
+        <a href="{% url 'usuario_lista' %}"
+           class="btn btn-secundario">{% include "partials/icone_voltar.html" %} Voltar</a>
+        {% if object %}
+        <a href="{% url 'usuario_senha' object.pk %}"
+           class="btn btn-secundario">{% include "partials/icone_chave.html" %} Redefinir senha</a>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+
+  {% if form.non_field_errors %}
+  <div class="rounded-lg bg-danger-soft border border-danger/20 text-danger text-sm p-3">{{ form.non_field_errors }}</div>
+  {% endif %}
+
+  <section class="bg-surface border border-line rounded-xl">
+    <div class="border-b border-line px-6 py-4">
+      <h2 class="font-semibold">Dados do usuário</h2>
+    </div>
+    <form method="post" id="form-usuario" class="p-6 space-y-5" novalidate>
+      {% csrf_token %}
+      {% if form.funcionario %}
+      <p class="rounded-lg bg-primary-soft text-primary-text border border-line px-3 py-2 text-sm">
+        Usuário do funcionário
+        <a href="{% url 'funcionario_editar' form.funcionario.pk %}#usuario" class="font-semibold underline">{{ form.funcionario.nome }}</a>.
+        O nome é alterado no cadastro do funcionário.
+      </p>
+      {% endif %}
+
+      <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        <div>{% include "partials/campo.html" with campo=form.first_name %}</div>
+        <div>{% include "partials/campo.html" with campo=form.last_name %}</div>
+        <div class="sm:col-span-2">{% include "partials/campo.html" with campo=form.email %}</div>
+        {% if form.password1 %}
+        <div>{% include "partials/campo.html" with campo=form.password1 %}</div>
+        <div>{% include "partials/campo.html" with campo=form.password2 %}</div>
+        {% endif %}
+      </div>
+
+      {% if not object %}
+      <p class="text-sm text-ink-soft">Depois de salvar, você adiciona os perfis de acesso por empresa.</p>
+      {% endif %}
+
+      <div class="flex items-center gap-4">
+        <button type="submit"
+                class="btn btn-primario">{% include "partials/icone_check.html" %} Salvar</button>
+        <a href="{% url 'usuario_lista' %}" class="btn btn-texto">Cancelar</a>
+      </div>
+    </form>
+  </section>
+
+  {% if object %}
+  {% include "usuarios/_acessos.html" %}
+  {% endif %}
+</div>
+
+<script>
+  Nexum.selecao();
+  Nexum.excluirSelecionados();
+  Nexum.dialogos();
+</script>
+{% endblock %}

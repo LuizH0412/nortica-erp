@@ -1,17 +1,24 @@
 {% extends "base_app.html" %}
-{% load formatos %}
+{% load formatos static %}
 {% block title %}Empresas · Nexum{% endblock %}
 {% block page_title %}Empresas{% endblock %}
 
 {% block page %}
-<div class="flex items-center justify-between gap-3 mb-4">
-  <p class="text-sm text-ink-soft">Empresas cadastradas neste sistema.</p>
+<div class="flex flex-wrap items-center justify-between gap-3 mb-4">
+  <form method="get" class="flex w-full max-w-xl flex-wrap items-center gap-2">
+    <div class="relative min-w-60 flex-1">
+      <span class="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-ink-soft">
+        {% include "partials/icone_busca.html" %}
+      </span>
+      <input type="search" name="q" value="{{ q }}" placeholder="Buscar por nome, razão social ou CNPJ"
+             class="w-full rounded-lg border border-line bg-surface pl-9 pr-3 py-2 text-sm
+                    focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/30">
+    </div>
+    {% include "partials/filtro_situacao.html" with rotulo="Só desativadas" %}
+  </form>
   {% if request.user.eh_master %}
   <a href="{% url 'empresa_criar' %}"
-     class="rounded-lg bg-primary text-white text-sm font-medium px-4 py-2
-            hover:bg-primary-hover transition">
-    Nova empresa
-  </a>
+     class="btn btn-novo">{% include "partials/icone_mais.html" %} Nova empresa</a>
   {% endif %}
 </div>
 
@@ -20,43 +27,72 @@
     <table class="w-full text-sm">
       <thead class="bg-page text-ink-soft text-left">
         <tr>
-          <th class="px-4 py-3 font-medium">Unidade</th>
-          <th class="px-4 py-3 font-medium">Empresa</th>
-          <th class="px-4 py-3 font-medium">CPF/CNPJ</th>
-          <th class="px-4 py-3 font-medium">Cidade</th>
-          <th class="px-4 py-3 font-medium">Situação</th>
-          <th class="px-4 py-3"></th>
+          <th class="w-12 px-0 py-3">
+            <div class="flex items-center justify-center">
+              <input type="checkbox" data-selecionar-todos aria-label="Selecionar todas"
+                     class="h-4 w-4 rounded border-line accent-primary cursor-pointer">
+            </div>
+          </th>
+          <th class="w-12 px-0 py-3"></th>
+          {% include "partials/th_ordenar.html" with campo="unidade" rotulo="Unidade" %}
+          {% include "partials/th_ordenar.html" with campo="empresa" rotulo="Empresa" %}
+          {% include "partials/th_ordenar.html" with campo="documento" rotulo="CPF/CNPJ" %}
+          {% include "partials/th_ordenar.html" with campo="cidade" rotulo="Cidade" %}
+          {% include "partials/th_ordenar.html" with campo="situacao" rotulo="Situação" %}
         </tr>
       </thead>
       <tbody class="divide-y divide-line">
         {% for e in empresas %}
-        <tr>
-          <td class="px-4 py-3 font-medium">{{ e.unidade }}</td>
-          <td class="px-4 py-3">
-            <div>{{ e.nome_exibicao }}</div>
-            {% if e.nome_fantasia %}<div class="text-xs text-ink-soft">{{ e.razao_social }}</div>{% endif %}
+        {% url 'empresa_editar' e.pk as url_abrir %}
+        <tr class="hover:bg-primary-soft/60 transition-colors">
+          <td class="px-0 py-3">
+            <div class="flex items-center justify-center">
+              <input type="checkbox" name="selecionadas" value="{{ e.pk }}" data-selecionar
+                     aria-label="Selecionar {{ e }}"
+                     class="h-4 w-4 rounded border-line accent-primary cursor-pointer">
+            </div>
           </td>
-          <td class="px-4 py-3 whitespace-nowrap">{{ e.documento|documento }}</td>
-          <td class="px-4 py-3">{% if e.municipio %}{{ e.municipio.nome }}/{{ e.municipio.uf }}{% else %}—{% endif %}</td>
-          <td class="px-4 py-3">
-            {% if e.ativa %}
-            <span class="rounded-full bg-success/15 text-success px-2.5 py-0.5 text-xs font-medium">Ativa</span>
-            {% else %}
-            <span class="rounded-full bg-ink-soft/15 text-ink-soft px-2.5 py-0.5 text-xs font-medium">Desativada</span>
-            {% endif %}
+          <td class="px-0 py-3">
+            <div class="flex items-center justify-center">
+              <a href="{{ url_abrir }}" title="Editar" aria-label="Editar {{ e }}"
+                 class="inline-flex rounded-md p-1.5 text-ink-soft hover:text-primary-text hover:bg-primary-soft transition">
+                {% include "partials/icone_lapis.html" %}
+              </a>
+            </div>
           </td>
-          <td class="px-4 py-3 text-right whitespace-nowrap space-x-4">
-            <a href="{% url 'empresa_editar' e.pk %}" class="text-primary-text hover:underline">Editar</a>
-            {% if request.user.eh_master %}
-            <a href="{% url 'empresa_excluir' e.pk %}" class="text-danger hover:underline">Excluir</a>
-            {% endif %}
+          {# Cada célula é um link para abrir o registro #}
+          <td class="p-0 font-medium">
+            <a href="{{ url_abrir }}" tabindex="-1" class="block px-4 py-3">{{ e.unidade }}</a>
+          </td>
+          <td class="p-0">
+            <a href="{{ url_abrir }}" tabindex="-1" class="block px-4 py-3">
+              <div>{{ e.nome_exibicao }}</div>
+              {% if e.nome_fantasia %}<div class="text-xs text-ink-soft">{{ e.razao_social }}</div>{% endif %}
+            </a>
+          </td>
+          <td class="p-0 whitespace-nowrap">
+            <a href="{{ url_abrir }}" tabindex="-1" class="block px-4 py-3">{{ e.documento|documento }}</a>
+          </td>
+          <td class="p-0">
+            <a href="{{ url_abrir }}" tabindex="-1" class="block px-4 py-3">{% if e.municipio %}{{ e.municipio.nome }}/{{ e.municipio.uf }}{% else %}—{% endif %}</a>
+          </td>
+          <td class="p-0">
+            <a href="{{ url_abrir }}" tabindex="-1" class="block px-4 py-3">
+              {% if e.ativa %}
+              <span class="rounded-full bg-success/15 text-success px-2.5 py-0.5 text-xs font-medium">Ativa</span>
+              {% else %}
+              <span class="rounded-full bg-ink-soft/15 text-ink-soft px-2.5 py-0.5 text-xs font-medium">Desativada</span>
+              {% endif %}
+            </a>
           </td>
         </tr>
         {% empty %}
         <tr>
-          <td colspan="6" class="px-4 py-10 text-center text-ink-soft">
-            Nenhuma empresa cadastrada ainda.
-            {% if request.user.eh_master %}Clique em <strong>Nova empresa</strong> para começar.{% endif %}
+          <td colspan="7" class="px-4 py-10 text-center text-ink-soft">
+            {% if q %}Nenhuma empresa {% if so_desativados %}desativada {% endif %}encontrada para "{{ q }}".
+            {% elif so_desativados %}Nenhuma empresa desativada.
+            {% else %}Nenhuma empresa ativa.
+            {% if request.user.eh_master %}Clique em <strong>Nova empresa</strong> para cadastrar.{% endif %}{% endif %}
           </td>
         </tr>
         {% endfor %}
@@ -64,4 +100,6 @@
     </table>
   </div>
 </div>
+
+<script>Nexum.selecao();</script>
 {% endblock %}

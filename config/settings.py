@@ -12,6 +12,7 @@ https://docs.djangoproject.com/en/6.1/ref/settings/
 
 from pathlib import Path
 import os
+from django.core.exceptions import ImproperlyConfigured
 from dotenv import load_dotenv
 
 load_dotenv()
@@ -20,14 +21,13 @@ load_dotenv()
 BASE_DIR = Path(__file__).resolve().parent.parent
 
 
-# Quick-start development settings - unsuitable for production
-# See https://docs.djangoproject.com/en/6.1/howto/deployment/checklist/
+# Segredos e modo de execução vêm do .env (veja .env.example)
+SECRET_KEY = os.getenv("SECRET_KEY")
+if not SECRET_KEY:
+    raise ImproperlyConfigured("Defina SECRET_KEY no arquivo .env.")
 
-# SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = 'django-insecure-x#ps=pc)g4xh*f-@975mx)ra91kq8mvgw+5qbg$dy9z1rpbrja'
-
-# SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = True
+# Desligado por padrão: só liga com DEBUG=True no .env
+DEBUG = os.getenv("DEBUG", "False").strip().lower() in ("1", "true", "sim", "yes")
 
 ALLOWED_HOSTS = []
 
@@ -44,7 +44,11 @@ SHARED_APPS = [
 
 # Tabelas em cada instância (todo o sistema)
 TENANT_APPS = [
-    "core",
+    "core",         # base visual compartilhada (home, estilos de formulário)
+    "empresas",     # matriz/filiais, empresa atual da sessão, dados por empresa
+    "contas",       # usuários e permissões
+    "funcionarios", # funcionários, funções e setores
+    "clientes",     # clientes (compartilhados entre as empresas)
     "django.contrib.auth",
     "django.contrib.contenttypes",
     "django.contrib.sessions",
@@ -59,7 +63,7 @@ MIDDLEWARE = [
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
     'django.contrib.auth.middleware.AuthenticationMiddleware',
-    "core.middleware.EmpresaAtualMiddleware",
+    "empresas.middleware.EmpresaAtualMiddleware",
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
 ]
@@ -76,7 +80,7 @@ TEMPLATES = [
                 'django.template.context_processors.request',
                 'django.contrib.auth.context_processors.auth',
                 'django.contrib.messages.context_processors.messages',
-                "core.context_processors.empresa",
+                "empresas.context_processors.empresa",
             ],
         },
     },
@@ -146,7 +150,7 @@ MAILERS = {
     },
 }
 
-AUTH_USER_MODEL = "core.Usuario"
+AUTH_USER_MODEL = "contas.Usuario"
 
 LANGUAGE_CODE = "pt-br"
 TIME_ZONE = "America/Sao_Paulo"  
@@ -162,13 +166,11 @@ LOGOUT_REDIRECT_URL = "login"
 DOMINIO_BASE = os.getenv("DOMINIO_BASE", "localhost")
 ALLOWED_HOSTS = [".localhost", "127.0.0.1", DOMINIO_BASE, f".{DOMINIO_BASE}"]
 
-MASTER_USERNAME = os.getenv("MASTER_USERNAME", "master")
-MASTER_EMAIL = os.getenv("MASTER_EMAIL", "")
+# Usuário master criado em cada instância (o login é pelo e-mail)
+MASTER_EMAIL = os.getenv("MASTER_EMAIL", "nexum@norticatecnologia.com.br")
 
 DATABASE_ROUTERS = ("django_tenants.routers.TenantSyncRouter",)
 TENANT_MODEL = "instancias.Instancia"
 TENANT_DOMAIN_MODEL = "instancias.Dominio"
 PUBLIC_SCHEMA_URLCONF = "config.urls_public"
-
-AUTH_USER_MODEL = "core.Usuario"
 

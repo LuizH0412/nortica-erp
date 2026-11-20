@@ -1,0 +1,69 @@
+{# Janela "Adicione um endereço" (aba Outros endereços). Campos com prefixo "end". #}
+{% with f=endereco_form %}
+<dialog id="dialogo-endereco" aria-labelledby="endereco-titulo"
+        class="dialogo-animado m-auto w-[calc(100%-2rem)] max-w-2xl rounded-2xl border border-line bg-surface p-0 text-ink shadow-2xl backdrop:bg-black/40">
+  <div class="flex items-start justify-between border-b border-line px-6 py-4">
+    <div>
+      <h2 id="endereco-titulo" class="text-lg font-semibold">Adicione um endereço</h2>
+      <p class="text-xs text-ink-soft">Preencha o formulário e clique em Salvar.</p>
+    </div>
+    <button type="button" data-fechar-dialogo title="Fechar" aria-label="Fechar"
+            class="-mr-2 inline-flex h-9 w-9 items-center justify-center rounded-full text-ink-soft transition
+                   hover:rotate-90 hover:bg-danger-soft hover:text-danger focus-visible:outline-none
+                   focus-visible:ring-2 focus-visible:ring-primary/40 [&_svg]:h-5 [&_svg]:w-5">
+      {% include "partials/icone_x.html" %}
+    </button>
+  </div>
+
+  <form method="post" id="form-endereco" action="{{ endereco_acao }}" novalidate>
+    {% csrf_token %}
+    <div class="space-y-4 px-6 py-5">
+      <p id="end-aviso" class="hidden"></p>
+      {% if f.non_field_errors %}<div class="rounded-lg bg-danger-soft text-danger text-sm p-3">{{ f.non_field_errors }}</div>{% endif %}
+
+      <div class="grid grid-cols-1 gap-4 sm:grid-cols-6">
+        <div class="sm:col-span-3">{% include "partials/campo.html" with campo=f.tipo %}</div>
+        <div class="sm:col-span-2">
+          <label for="{{ f.cep.id_for_label }}" class="block text-sm font-medium">{{ f.cep.label }}</label>
+          <div class="flex gap-2">
+            {{ f.cep }}
+            <button type="button" id="end-btn-buscar-cep" title="Buscar o endereço pelo CEP" class="btn-campo">
+              {% include "partials/icone_busca.html" %}
+            </button>
+          </div>
+        </div>
+        <div class="sm:col-span-1">{% include "partials/campo.html" with campo=f.numero %}</div>
+
+        <div class="sm:col-span-3">{% include "partials/campo.html" with campo=f.logradouro %}</div>
+        <div class="sm:col-span-3">{% include "partials/campo.html" with campo=f.ponto_referencia %}</div>
+
+        <div class="sm:col-span-3">
+          <label for="end-cidade_busca" class="block text-sm font-medium"><span class="text-danger">*</span>Cidade - UF</label>
+          <div class="flex gap-2">
+            <div class="w-20 shrink-0">{{ f.uf }}</div>
+            <div class="relative min-w-0 flex-1">
+              <input type="text" id="end-cidade_busca" autocomplete="off" placeholder="Buscar cidade"
+                     value="{{ f.instance.municipio.nome|default:'' }}"
+                     class="mt-1 w-full rounded-lg border border-line bg-surface px-3 py-2
+                            focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/30">
+              {{ f.municipio }}
+              <ul id="end-cidade_opcoes"
+                  class="hidden absolute left-0 right-0 z-20 mt-1 max-h-60 overflow-auto
+                         bg-surface border border-line rounded-lg shadow-lg py-1"></ul>
+            </div>
+          </div>
+          {% for erro in f.municipio.errors %}<p class="mt-1 text-xs text-danger" data-erro>{{ erro }}</p>{% endfor %}
+        </div>
+        <div class="sm:col-span-3">{% include "partials/campo.html" with campo=f.bairro %}</div>
+
+        <div class="sm:col-span-6">{% include "partials/campo.html" with campo=f.complemento %}</div>
+      </div>
+    </div>
+
+    <div class="flex items-center justify-end gap-3 rounded-b-2xl border-t border-line bg-page/60 px-6 py-4">
+      <button type="button" data-fechar-dialogo class="btn btn-texto">Cancelar</button>
+      <button type="submit" class="btn btn-primario">{% include "partials/icone_check.html" %} Salvar</button>
+    </div>
+  </form>
+</dialog>
+{% endwith %}
