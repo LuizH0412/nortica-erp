@@ -35,6 +35,7 @@ ALLOWED_HOSTS = []
 SHARED_APPS = [
     "django_tenants",  # sempre o primeiro
     "instancias",
+    "localidades",
     "django.contrib.contenttypes",
     "django.contrib.messages",
     "django.contrib.staticfiles",
@@ -58,6 +59,7 @@ MIDDLEWARE = [
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
     'django.contrib.auth.middleware.AuthenticationMiddleware',
+    "core.middleware.EmpresaAtualMiddleware",
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
 ]
@@ -74,6 +76,7 @@ TEMPLATES = [
                 'django.template.context_processors.request',
                 'django.contrib.auth.context_processors.auth',
                 'django.contrib.messages.context_processors.messages',
+                "core.context_processors.empresa",
             ],
         },
     },

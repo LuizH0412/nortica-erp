@@ -1,0 +1,39 @@
+{% extends "base.html" %}
+{% load formatos %}
+{% block title %}Escolher empresa · Nexum{% endblock %}
+
+{% block content %}
+<div class="min-h-screen flex flex-col items-center justify-center px-4 py-10">
+  <div class="w-full max-w-md">
+    <div class="flex flex-col items-center mb-8 text-center">
+      {% include "partials/logo_mark.html" with classes="h-12 w-12" %}
+      <h1 class="mt-4 text-xl font-semibold">Em qual empresa você quer entrar?</h1>
+      <p class="mt-1 text-sm text-ink-soft">Tudo o que você fizer ficará registrado nela.</p>
+    </div>
+
+    <div class="space-y-3">
+      {% for e in empresas %}
+      <form method="post" action="{% url 'trocar_empresa' e.pk %}">
+        {% csrf_token %}
+        <button type="submit"
+                class="w-full text-left bg-surface border border-line rounded-xl px-5 py-4
+                       hover:border-primary hover:bg-primary-soft transition">
+          <span class="flex items-center justify-between gap-3">
+            <span class="font-semibold">{{ e.unidade }}</span>
+            {% if not e.ativa %}
+            <span class="rounded-full bg-warning/20 border border-warning/40 px-2 py-0.5 text-xs">Desativada</span>
+            {% endif %}
+          </span>
+          <span class="block text-sm text-ink-soft">{{ e.nome_exibicao }} · {{ e.documento|documento }}</span>
+        </button>
+      </form>
+      {% endfor %}
+    </div>
+
+    <form method="post" action="{% url 'logout' %}" class="mt-8 text-center">
+      {% csrf_token %}
+      <button class="text-sm text-ink-soft hover:text-danger">Sair</button>
+    </form>
+  </div>
+</div>
+{% endblock %}

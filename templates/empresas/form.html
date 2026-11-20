@@ -1,0 +1,326 @@
+{% extends "base_app.html" %}
+{% block title %}{{ titulo }} · Nexum{% endblock %}
+{% block page_title %}{{ titulo }}{% endblock %}
+
+{% block page %}
+<form method="post" id="form-empresa" class="max-w-6xl space-y-5">
+  {% csrf_token %}
+
+  <div class="flex flex-wrap items-center justify-between gap-3">
+    <nav class="text-sm text-ink-soft">
+      <a href="{% url 'empresa_lista' %}" class="hover:text-ink">Empresas</a>
+      <span class="mx-1">/</span>
+      <span class="text-ink font-medium">{% if object %}{{ object.unidade }}{% else %}Nova empresa{% endif %}</span>
+    </nav>
+    <div class="flex items-center gap-4">
+      {% include "partials/campo.html" with campo=form.ativa %}
+      <div class="flex items-center gap-2">
+        <a href="{% url 'empresa_lista' %}"
+           class="rounded-lg border border-line px-3 py-1.5 text-sm hover:bg-primary-soft">Voltar</a>
+        {% if object and request.user.eh_master %}
+        <a href="{% url 'empresa_criar' %}"
+           class="rounded-lg border border-line px-3 py-1.5 text-sm hover:bg-primary-soft">Novo cadastro</a>
+        <a href="{% url 'empresa_excluir' object.pk %}"
+           class="rounded-lg border border-danger px-3 py-1.5 text-sm text-danger hover:bg-danger-soft">Excluir</a>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+
+  {% if form.non_field_errors %}
+  <div class="rounded-lg bg-danger-soft border border-danger/20 text-danger text-sm p-3">
+    {{ form.non_field_errors }}
+  </div>
+  {% endif %}
+
+  <div class="bg-surface border border-line rounded-xl">
+    <div class="flex gap-1 border-b border-line px-4 pt-3">
+      <button type="button" data-aba="dados"
+              class="flex items-center gap-2 border-b-2 -mb-px px-4 py-2 text-sm font-medium">
+        Dados cadastrais <span data-ponto class="hidden h-2 w-2 rounded-full bg-danger"></span>
+      </button>
+      <button type="button" data-aba="fiscal"
+              class="flex items-center gap-2 border-b-2 -mb-px px-4 py-2 text-sm font-medium">
+        Fiscal <span data-ponto class="hidden h-2 w-2 rounded-full bg-danger"></span>
+      </button>
+    </div>
+
+    <div class="p-6">
+      <!-- ABA: DADOS CADASTRAIS -->
+      <div data-painel="dados" class="space-y-4">
+        <p id="aviso_consulta" class="hidden"></p>
+
+        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+          <div>
+            <label for="id_documento" class="block text-sm font-medium">{{ form.documento.label }}</label>
+            <div class="flex gap-2">
+              {{ form.documento }}
+              <button type="button" id="btn-buscar-cnpj" title="Buscar os dados da empresa pelo CNPJ"
+                      class="mt-1 shrink-0 rounded-lg border border-line px-3 text-ink-soft
+                             hover:bg-primary-soft hover:text-primary-text transition">
+                {% include "partials/icone_busca.html" %}
+              </button>
+            </div>
+            {% for erro in form.documento.errors %}<p class="mt-1 text-xs text-danger">{{ erro }}</p>{% endfor %}
+          </div>
+          <div>{% include "partials/campo.html" with campo=form.inscricao_estadual %}</div>
+          <div>{% include "partials/campo.html" with campo=form.inscricao_municipal %}</div>
+          <div>{% include "partials/campo.html" with campo=form.unidade %}</div>
+
+          <div class="sm:col-span-2">{% include "partials/campo.html" with campo=form.nome_fantasia %}</div>
+          <div class="sm:col-span-2">{% include "partials/campo.html" with campo=form.razao_social %}</div>
+
+          <div>
+            <label for="id_cep" class="block text-sm font-medium">{{ form.cep.label }}</label>
+            <div class="flex gap-2">
+              {{ form.cep }}
+              <button type="button" id="btn-buscar-cep" title="Buscar o endereço pelo CEP"
+                      class="mt-1 shrink-0 rounded-lg border border-line px-3 text-ink-soft
+                             hover:bg-primary-soft hover:text-primary-text transition">
+                {% include "partials/icone_busca.html" %}
+              </button>
+            </div>
+            {% for erro in form.cep.errors %}<p class="mt-1 text-xs text-danger">{{ erro }}</p>{% endfor %}
+          </div>
+          <div class="sm:col-span-2">{% include "partials/campo.html" with campo=form.logradouro %}</div>
+          <div>{% include "partials/campo.html" with campo=form.numero %}</div>
+
+          <div>{% include "partials/campo.html" with campo=form.complemento %}</div>
+          <div>{% include "partials/campo.html" with campo=form.bairro %}</div>
+          <div class="sm:col-span-2">
+            <label for="cidade_busca" class="block text-sm font-medium">Cidade - UF</label>
+            <div class="flex gap-2">
+              <div class="w-28 shrink-0">{{ form.uf }}</div>
+              <div class="relative flex-1">
+                <input type="text" id="cidade_busca" autocomplete="off"
+                       placeholder="Digite para buscar a cidade"
+                       value="{{ form.instance.municipio.nome|default:'' }}"
+                       class="mt-1 w-full rounded-lg border border-line bg-surface px-3 py-2
+                              focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/30">
+                {{ form.municipio }}
+                <ul id="cidade_opcoes"
+                    class="hidden absolute left-0 right-0 z-20 mt-1 max-h-60 overflow-auto
+                           bg-surface border border-line rounded-lg shadow-lg py-1"></ul>
+              </div>
+            </div>
+            {% for erro in form.municipio.errors %}<p class="mt-1 text-xs text-danger">{{ erro }}</p>{% endfor %}
+          </div>
+
+          <div>{% include "partials/campo.html" with campo=form.telefone %}</div>
+          <div class="sm:col-span-2">{% include "partials/campo.html" with campo=form.email %}</div>
+          <div>{% include "partials/campo.html" with campo=form.nome_nos_documentos %}</div>
+        </div>
+      </div>
+
+      <!-- ABA: FISCAL -->
+      <div data-painel="fiscal" class="hidden">
+        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+          <div>{% include "partials/campo.html" with campo=form.regime_tributario %}</div>
+        </div>
+        <p class="mt-6 text-sm text-ink-soft">
+          Certificado digital e demais configurações de nota fiscal entrarão aqui quando forem criados.
+        </p>
+      </div>
+    </div>
+  </div>
+
+  <div class="flex items-center gap-4">
+    <button type="submit"
+            class="rounded-lg bg-primary text-white text-sm font-medium px-5 py-2
+                   hover:bg-primary-hover transition">
+      Salvar
+    </button>
+    <a href="{% url 'empresa_lista' %}" class="text-sm text-ink-soft hover:text-ink">Cancelar</a>
+  </div>
+</form>
+
+<script>
+  (function () {
+    var URLS = {
+      cnpj: "{% url 'consulta_cnpj' %}",
+      cep: "{% url 'consulta_cep' %}",
+      cidades: "{% url 'municipio_busca' %}"
+    };
+    function el(id) { return document.getElementById(id); }
+
+    // ---------- Máscaras ----------
+    var PADROES = {
+      cpf: "XXX.XXX.XXX-XX", cnpj: "XX.XXX.XXX/XXXX-XX", cep: "XXXXX-XXX",
+      fixo: "(XX) XXXX-XXXX", celular: "(XX) XXXXX-XXXX"
+    };
+    function aplicar(valor, padrao) {
+      var saida = "", i = 0;
+      for (var k = 0; k < padrao.length; k++) {
+        if (i >= valor.length) break;
+        saida += padrao[k] === "X" ? valor[i++] : padrao[k];
+      }
+      return saida;
+    }
+    function formatar(campo) {
+      var tipo = campo.dataset.mascara, v = campo.value;
+      if (tipo === "documento") {
+        v = v.toUpperCase().replace(/[^0-9A-Z]/g, "").slice(0, 14);
+        campo.value = aplicar(v, (v.length <= 11 && /^\d*$/.test(v)) ? PADROES.cpf : PADROES.cnpj);
+      } else if (tipo === "cep") {
+        v = v.replace(/\D/g, "").slice(0, 8);
+        campo.value = aplicar(v, PADROES.cep);
+      } else if (tipo === "telefone") {
+        v = v.replace(/\D/g, "").slice(0, 11);
+        campo.value = aplicar(v, v.length > 10 ? PADROES.celular : PADROES.fixo);
+      }
+    }
+    document.querySelectorAll("[data-mascara]").forEach(formatar);
+    document.addEventListener("input", function (e) {
+      if (e.target.dataset && e.target.dataset.mascara) formatar(e.target);
+    });
+
+    // ---------- Abas ----------
+    var abas = document.querySelectorAll("[data-aba]");
+    var paineis = document.querySelectorAll("[data-painel]");
+    var ATIVA = ["border-primary", "text-primary-text"];
+    var INATIVA = ["border-transparent", "text-ink-soft", "hover:text-ink"];
+    function mostrarAba(nome) {
+      abas.forEach(function (b) {
+        var ativa = b.dataset.aba === nome;
+        ATIVA.forEach(function (c) { b.classList.toggle(c, ativa); });
+        INATIVA.forEach(function (c) { b.classList.toggle(c, !ativa); });
+      });
+      paineis.forEach(function (p) { p.classList.toggle("hidden", p.dataset.painel !== nome); });
+    }
+    abas.forEach(function (b) {
+      b.addEventListener("click", function () { mostrarAba(b.dataset.aba); });
+    });
+    var erroDados = document.querySelector('[data-painel="dados"] .text-danger');
+    var erroFiscal = document.querySelector('[data-painel="fiscal"] .text-danger');
+    if (erroDados) document.querySelector('[data-aba="dados"] [data-ponto]').classList.remove("hidden");
+    if (erroFiscal) document.querySelector('[data-aba="fiscal"] [data-ponto]').classList.remove("hidden");
+    mostrarAba(!erroDados && erroFiscal ? "fiscal" : "dados");
+
+    // ---------- Aviso das consultas ----------
+    var aviso = el("aviso_consulta");
+    var ESTILOS = {
+      info: "bg-primary-soft text-primary-text border border-line",
+      sucesso: "bg-success/10 text-success border border-success/30",
+      erro: "bg-danger-soft text-danger border border-danger/20"
+    };
+    function mostrar(mensagem, tipo) {
+      aviso.className = "rounded-lg px-3 py-2 text-sm " + ESTILOS[tipo];
+      aviso.textContent = mensagem;
+    }
+
+    // ---------- Cidade: digitar e filtrar pela UF ----------
+    var uf = el("id_uf"), busca = el("cidade_busca"), oculto = el("id_municipio");
+    var lista = el("cidade_opcoes"), timer = null;
+
+    function fechar() { lista.classList.add("hidden"); lista.innerHTML = ""; }
+    function escolher(m) {
+      oculto.value = m.id; busca.value = m.nome; uf.value = m.uf; fechar();
+    }
+    function mostrarOpcoes(itens) {
+      lista.innerHTML = "";
+      if (!itens.length) {
+        var vazio = document.createElement("li");
+        vazio.className = "px-3 py-2 text-sm text-ink-soft";
+        vazio.textContent = "Nenhuma cidade encontrada.";
+        lista.appendChild(vazio);
+      }
+      itens.forEach(function (m) {
+        var li = document.createElement("li");
+        li.className = "px-3 py-2 text-sm cursor-pointer hover:bg-primary-soft";
+        li.textContent = m.nome + " - " + m.uf;
+        li.addEventListener("mousedown", function (e) { e.preventDefault(); escolher(m); });
+        lista.appendChild(li);
+      });
+      lista.classList.remove("hidden");
+    }
+    busca.addEventListener("input", function () {
+      oculto.value = "";
+      clearTimeout(timer);
+      var q = busca.value.trim();
+      if (q.length < 2) { fechar(); return; }
+      timer = setTimeout(function () {
+        fetch(URLS.cidades + "?uf=" + encodeURIComponent(uf.value) + "&q=" + encodeURIComponent(q))
+          .then(function (r) { return r.json(); })
+          .then(function (r) { mostrarOpcoes(r.resultados); })
+          .catch(fechar);
+      }, 250);
+    });
+    busca.addEventListener("blur", function () { setTimeout(fechar, 150); });
+    uf.addEventListener("change", function () { oculto.value = ""; busca.value = ""; fechar(); });
+
+    el("form-empresa").addEventListener("submit", function (e) {
+      if (busca.value.trim() && !oculto.value) {
+        e.preventDefault();
+        mostrarAba("dados");
+        mostrar("Escolha a cidade na lista de opções que aparece enquanto você digita.", "erro");
+        busca.focus();
+      }
+    });
+
+    // ---------- Consultas (CNPJ e CEP) ----------
+    // O que a consulta trouxer substitui o que estava digitado.
+    // Campo que ela não trouxer (vazio) permanece como está.
+    function preencher(id, valor) {
+      if (!valor) return;
+      var campo = el(id);
+      campo.value = valor;
+      campo.dispatchEvent(new Event("input", { bubbles: true }));
+    }
+    function aplicarMunicipio(m) {
+      if (!m) return false;
+      uf.value = m.uf; oculto.value = m.id; busca.value = m.nome;
+      return true;
+    }
+    function semCidade(ufSigla) {
+      if (ufSigla) uf.value = ufSigla;
+      oculto.value = ""; busca.value = "";
+    }
+    function consultar(tipo, parametro, valor, botao, aoConcluir) {
+      mostrar("Consultando...", "info");
+      botao.disabled = true;
+      fetch(URLS[tipo] + "?" + parametro + "=" + encodeURIComponent(valor))
+        .then(function (r) { return r.json(); })
+        .then(function (r) {
+          if (!r.ok) { mostrar(r.mensagem, "erro"); return; }
+          aoConcluir(r.dados);
+        })
+        .catch(function () {
+          mostrar("Não conseguimos falar com o servidor agora. Tente de novo em instantes ou preencha os dados manualmente.", "erro");
+        })
+        .finally(function () { botao.disabled = false; });
+    }
+
+    el("btn-buscar-cnpj").addEventListener("click", function () {
+      consultar("cnpj", "documento", el("id_documento").value, this, function (d) {
+        preencher("id_razao_social", d.razao_social);
+        preencher("id_nome_fantasia", d.nome_fantasia);
+        preencher("id_cep", d.cep);
+        preencher("id_logradouro", d.logradouro);
+        preencher("id_numero", d.numero);
+        preencher("id_complemento", d.complemento);
+        preencher("id_bairro", d.bairro);
+        preencher("id_telefone", d.telefone);
+        preencher("id_email", d.email);
+        if (aplicarMunicipio(d.municipio)) {
+          mostrar("Dados preenchidos a partir da Receita Federal. Confira antes de salvar.", "sucesso");
+        } else {
+          mostrar("Dados preenchidos, mas não conseguimos identificar a cidade. Escolha a cidade na lista.", "info");
+        }
+      });
+    });
+
+    el("btn-buscar-cep").addEventListener("click", function () {
+      consultar("cep", "cep", el("id_cep").value, this, function (d) {
+        preencher("id_logradouro", d.logradouro);
+        preencher("id_bairro", d.bairro);
+        if (aplicarMunicipio(d.municipio)) {
+          mostrar("Endereço preenchido pelo CEP. Falta só conferir o número e o complemento.", "sucesso");
+        } else {
+          semCidade(d.uf);
+          mostrar("Endereço preenchido, mas não conseguimos identificar a cidade. Escolha a cidade na lista.", "info");
+        }
+      });
+    });
+  })();
+</script>
+{% endblock %}

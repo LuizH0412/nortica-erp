@@ -1,0 +1,16 @@
+{% extends "base.html" %}
+{% block title %}Sem acesso · Nexum{% endblock %}
+
+{% block content %}
+<div class="min-h-screen flex items-center justify-center px-4">
+  <div class="w-full max-w-sm bg-surface border border-line rounded-2xl p-8 text-center">
+    {% include "partials/logo_mark.html" with classes="h-12 w-12 mx-auto" %}
+    <h1 class="mt-4 text-lg font-semibold">Você ainda não tem acesso a nenhuma empresa</h1>
+    <p class="mt-2 text-sm text-ink-soft">Peça ao administrador do sistema para liberar o seu acesso.</p>
+    <form method="post" action="{% url 'logout' %}" class="mt-6">
+      {% csrf_token %}
+      <button class="rounded-lg border border-line px-4 py-2 text-sm hover:bg-primary-soft">Sair</button>
+    </form>
+  </div>
+</div>
+{% endblock %}
