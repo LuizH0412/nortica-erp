@@ -1,0 +1,48 @@
+{% extends "base_app.html" %}
+{% load formatos %}
+{% block title %}Detalhes fiscais · {{ titulo }} · Nexum{% endblock %}
+{% block page_title %}Produtos{% endblock %}
+
+{% block page %}
+<div class="max-w-7xl space-y-5">
+  <div class="flex flex-wrap items-center justify-between gap-3">
+    <nav class="text-sm text-ink-soft">
+      <a href="{% url 'produto_lista' %}" class="hover:text-ink">Produtos</a>
+      <span class="mx-1">/</span>
+      <a href="{% url 'produto_editar' object.pk %}" class="hover:text-ink">{{ object.codigo }} · {{ object }}</a>
+      <span class="mx-1">/</span>
+      <span class="font-medium text-ink">Detalhes fiscais</span>
+    </nav>
+    <a href="{% url 'produto_editar' object.pk %}#fiscal" class="btn btn-secundario">{% include "partials/icone_voltar.html" %} Voltar ao produto</a>
+  </div>
+
+  {# Cabeçalho: produto + troca rápida entre as empresas #}
+  <div class="flex flex-wrap items-center justify-between gap-4 rounded-xl border border-line bg-surface px-5 py-4">
+    <div class="min-w-0">
+      <p class="text-xs font-medium uppercase tracking-wide text-ink-soft">Detalhes fiscais</p>
+      <h1 class="truncate text-lg font-semibold">{{ object }}</h1>
+      <p class="text-xs text-ink-soft">Código {{ object.codigo }} · {{ object.unidade }} · {{ object.preco_venda|moeda }}</p>
+    </div>
+    {% if empresas_fiscais|length > 1 %}
+    <nav class="flex flex-wrap gap-2" aria-label="Empresas">
+      {% for empresa, detalhe in empresas_fiscais %}
+      <a href="{% url 'produto_fiscal' object.pk empresa.pk %}"
+         class="inline-flex items-center gap-2 rounded-full border px-3 py-1.5 text-sm transition
+                {% if empresa.pk == fiscal_empresa.pk %}border-primary/50 bg-primary-soft font-medium text-primary-text{% else %}border-line hover:bg-page{% endif %}"
+         {% if empresa.pk == fiscal_empresa.pk %}aria-current="page"{% endif %}>
+        <span class="h-2 w-2 rounded-full {% if detalhe and detalhe.vinculo %}bg-success{% elif detalhe %}bg-warning{% else %}bg-line{% endif %}"
+              title="{% if detalhe and detalhe.vinculo %}Preenchido{% elif detalhe %}Sem vínculo fiscal{% else %}Ainda não preenchido{% endif %}"></span>
+        {{ empresa.unidade }}
+      </a>
+      {% endfor %}
+    </nav>
+    {% else %}
+    <span class="inline-flex items-center gap-2 rounded-full border border-primary/50 bg-primary-soft px-3 py-1.5 text-sm font-medium text-primary-text">
+      {{ fiscal_empresa.unidade }}
+    </span>
+    {% endif %}
+  </div>
+
+  {% include "produtos/_fiscal_form.html" %}
+</div>
+{% endblock %}

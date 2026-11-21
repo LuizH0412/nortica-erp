@@ -1,0 +1,15 @@
+{% comment %}
+Interruptor de filtro numa tela de pesquisa (ex.: "Combo"). Vai dentro do <form method="get">.
+Uso: include com nome="combo" rotulo="Combo" marcado=so_combos
+{% endcomment %}
+<label class="inline-flex shrink-0 cursor-pointer items-center gap-2 rounded-lg border border-line bg-surface px-3 py-2 text-sm transition
+              hover:bg-primary-soft/60 has-checked:border-primary/40 has-checked:bg-primary-soft">
+  <span class="relative inline-flex">
+    <input type="checkbox" name="{{ nome }}" value="1" class="peer sr-only" {% if marcado %}checked{% endif %}
+           onchange="this.form.submit()">
+    <span class="h-5 w-9 rounded-full bg-line transition peer-checked:bg-primary
+                 peer-focus-visible:ring-2 peer-focus-visible:ring-primary/30"></span>
+    <span class="absolute left-0.5 top-0.5 h-4 w-4 rounded-full bg-white shadow transition peer-checked:translate-x-4"></span>
+  </span>
+  {{ rotulo }}
+</label>

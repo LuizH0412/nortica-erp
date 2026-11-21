@@ -1,3 +1,5 @@
+<form method="post" id="form-selecionados" action="{% url 'usuario_excluir_selecionados' %}">
+{% csrf_token %}
 <div class="bg-surface border border-line rounded-xl overflow-hidden">
   <div class="overflow-x-auto">
     <table class="w-full text-sm">
@@ -10,11 +12,12 @@
             </div>
           </th>
           <th class="w-12 px-0 py-3"></th>
+          {% include "partials/th_ordenar.html" with campo="codigo" rotulo="Código" %}
           {% include "partials/th_ordenar.html" with campo="nome" rotulo="Nome" %}
-          {% include "partials/th_ordenar.html" with campo="email" rotulo="E-mail (login)" %}
+          <th class="px-4 py-3 font-medium ">E-mail (login)</th>
           <th class="px-4 py-3 font-medium">Perfis de acesso</th>
-          {% include "partials/th_ordenar.html" with campo="funcionario" rotulo="Funcionário" %}
-          {% include "partials/th_ordenar.html" with campo="situacao" rotulo="Situação" %}
+          <th class="px-4 py-3 font-medium ">Funcionário</th>
+          <th class="px-4 py-3 font-medium ">Situação</th>
         </tr>
       </thead>
       <tbody class="divide-y divide-line">
@@ -36,6 +39,7 @@
               </a>
             </div>
           </td>
+          <td class="p-0 tabular-nums text-ink-soft"><a href="{{ url_abrir }}" tabindex="-1" class="block px-4 py-3">{{ u.pk }}</a></td>
           <td class="p-0 font-medium"><a href="{{ url_abrir }}" tabindex="-1" class="block px-4 py-3">{{ u.get_full_name|default:"—" }}</a></td>
           <td class="p-0"><a href="{{ url_abrir }}" tabindex="-1" class="block px-4 py-3">{{ u.email }}</a></td>
           <td class="p-0">
@@ -61,7 +65,7 @@
         </tr>
         {% empty %}
         <tr>
-          <td colspan="7" class="px-4 py-10 text-center text-ink-soft">
+          <td colspan="8" class="px-4 py-10 text-center text-ink-soft">
             {% if q %}Nenhum usuário {% if so_desativados %}bloqueado {% endif %}encontrado para "{{ q }}".{% elif so_desativados %}Nenhum usuário bloqueado.{% else %}Nenhum usuário ativo.{% endif %}
           </td>
         </tr>
@@ -70,5 +74,6 @@
     </table>
   </div>
 </div>
+</form>
 
 {% include "partials/paginacao.html" %}

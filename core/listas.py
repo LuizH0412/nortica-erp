@@ -1,4 +1,7 @@
 """Recursos comuns das telas de lista (pesquisa) dos cadastros."""
+from django.contrib import messages
+from django.db import transaction
+from django.db.models import ProtectedError
 
 PARAMETRO_DESATIVADOS = "desativados"
 PARAMETRO_ORDEM = "o"
@@ -70,3 +73,39 @@ class FiltroSituacaoMixin:
         contexto = super().get_context_data(**kwargs)
         contexto["so_desativados"] = self.so_desativados
         return contexto
+
+
+def excluir_selecionados(request, queryset, *, singular, plural, artigo="o", impedimento=None, excluir=None):
+    """
+    Botão "Excluir selecionados" das listas: exclui os registros marcados (checkbox name="selecionados").
+
+    - impedimento(item): devolve o motivo para NÃO excluir aquele item (ou None para liberar)
+    - excluir(item): como excluir (padrão: item.delete()); roda numa transação por item
+    Exclui o que pode, explica o que ficou de fora e devolve quantos foram excluídos.
+    """
+    ids = [i for i in request.POST.getlist("selecionados") if i.isdigit()]
+    itens = list(queryset.filter(pk__in=ids))
+    if not itens:
+        messages.warning(request, "Nenhum item selecionado.")
+        return 0
+
+    excluidos, recusados = 0, []
+    for item in itens:
+        nome = str(item)
+        motivo = impedimento(item) if impedimento else None
+        if motivo:
+            recusados.append(f"{nome} ({motivo})")
+            continue
+        try:
+            with transaction.atomic():
+                (excluir or (lambda i: i.delete()))(item)
+            excluidos += 1
+        except ProtectedError:
+            recusados.append(f"{nome} (já tem registros ligados; desative em vez de excluir)")
+
+    if excluidos:
+        sufixo = "s" if excluidos > 1 else ""
+        messages.success(request, f"{excluidos} {plural if excluidos > 1 else singular} excluíd{artigo}{sufixo}.")
+    if recusados:
+        messages.warning(request, "Não foram excluídos: " + "; ".join(recusados) + ".")
+    return excluidos

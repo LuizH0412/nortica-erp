@@ -9,6 +9,8 @@ Cada app registra os seus no AppConfig.ready():
 - relacao: nome do relacionamento reverso que diz quem usa o item (para contar e impedir exclusão)
 - uso: como chamar quem usa, no singular e plural (para as mensagens)
 - so_configuracao: só quem acessa as configurações pode gerir (senão, qualquer usuário logado)
+- pai: para cadastros que pertencem a outro (ex.: subgrupo -> "grupo"). A lista filtra por ?pai=<id>
+  e o cadastro novo recebe o pai enviado no POST.
 
 Tudo responde em JSON: pesquisar, cadastrar, renomear, ativar/desativar e excluir.
 """
@@ -22,11 +24,15 @@ from django.views.decorators.http import require_POST
 REGISTRO = {}
 
 
-def registrar(tipo, modelo, form, *, relacao, uso, so_configuracao=False):
+def registrar(tipo, modelo, form, *, relacao, uso, so_configuracao=False, pai=None):
     REGISTRO[tipo] = {
         "modelo": modelo, "form": form, "relacao": relacao,
-        "uso": uso, "so_configuracao": so_configuracao,
+        "uso": uso, "so_configuracao": so_configuracao, "pai": pai,
     }
+
+
+def _id_pai(valor):
+    return int(valor) if str(valor or "").isdigit() else None
 
 
 def _cfg(request, tipo):
@@ -50,10 +56,17 @@ def _item_json(item, uso):
 def lista(request, tipo):
     cfg = _cfg(request, tipo)
     qs = cfg["modelo"].objects.annotate(total=Count(cfg["relacao"])).order_by("-ativo", "nome")
+    if cfg["pai"]:
+        qs = qs.filter(**{f"{cfg['pai']}_id": _id_pai(request.GET.get("pai"))})
+    if request.GET.get("ativos"):
+        qs = qs.filter(ativo=True)
     q = request.GET.get("q", "").strip()
     if q:
         qs = qs.filter(nome__icontains=q)
-    return JsonResponse({"itens": [_item_json(i, i.total) for i in qs[:200]]})
+    limite = request.GET.get("limite", "")
+    limite = min(int(limite), 200) if limite.isdigit() and int(limite) > 0 else 200
+    itens = list(qs[:limite + 1])  # um a mais só para saber se tem mais
+    return JsonResponse({"itens": [_item_json(i, i.total) for i in itens[:limite]], "mais": len(itens) > limite})
 
 
 @login_required
@@ -67,6 +80,12 @@ def salvar(request, tipo, pk=None):
         "nome": request.POST.get("nome", item.nome if item else ""),
         "ativo": "on" if ativo in ("1", "on", "true") else "",
     }
+    if cfg["pai"] and item is None:
+        pai = _id_pai(request.POST.get("pai"))
+        modelo_pai = cfg["modelo"]._meta.get_field(cfg["pai"]).related_model
+        if pai is None or not modelo_pai.objects.filter(pk=pai).exists():
+            return JsonResponse({"ok": False, "mensagem": "Escolha primeiro a que pertence o cadastro."}, status=400)
+        dados["pai"] = pai
     form = cfg["form"](dados, instance=item)
     if not form.is_valid():
         mensagem = " ".join(e for lista_erros in form.errors.values() for e in lista_erros)

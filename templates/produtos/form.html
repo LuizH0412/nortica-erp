@@ -1,0 +1,577 @@
+{% extends "base_app.html" %}
+{% load formatos %}
+{% block title %}{{ titulo }} · Nexum{% endblock %}
+{% block page_title %}Produtos{% endblock %}
+
+{% block page %}
+<div class="max-w-7xl space-y-5">
+  <div class="flex flex-wrap items-center justify-between gap-3">
+    <nav class="text-sm text-ink-soft">
+      <a href="{% url 'produto_lista' %}" class="hover:text-ink">Produtos</a>
+      <span class="mx-1">/</span>
+      <span class="text-ink font-medium">{% if object %}{{ object.codigo }} · {% endif %}{{ titulo }}</span>
+    </nav>
+    <div class="flex flex-wrap items-center gap-4">
+      <div class="flex flex-wrap items-center gap-2">
+        <a href="{% url 'produto_lista' %}" class="btn btn-secundario">{% include "partials/icone_voltar.html" %} Voltar</a>
+        {% if object %}
+        <a href="{% url 'produto_criar' %}" class="btn btn-novo">{% include "partials/icone_mais.html" %} Novo cadastro</a>
+        <a href="{% url 'produto_criar' %}?clonar={{ object.pk }}" class="btn btn-secundario"
+           title="Abre um produto novo já preenchido com os dados deste">{% include "partials/icone_copiar.html" %} Clonar produto</a>
+        {% if request.pode_configurar %}
+        <button type="button" data-organizar-estoque class="btn btn-secundario"
+                {% if not object.controlar_estoque %}disabled title="Este produto não controla estoque"{% endif %}>
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 8 12 3 3 8v8l9 5 9-5Z"/><path d="m3 8 9 5 9-5M12 13v8"/></svg>
+          Organizar estoque
+        </button>
+        {% endif %}
+        <button type="submit" form="form-excluir-produto" class="btn btn-perigo">{% include "partials/icone_lixeira.html" %} Excluir</button>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+
+  {% if origem_clone %}
+  <p class="flex items-center gap-2 rounded-xl border border-primary/20 bg-primary-soft px-4 py-3 text-sm text-primary-text">
+    {% include "partials/icone_copiar.html" %}
+    Cópia de <strong>{{ origem_clone.codigo }} · {{ origem_clone }}</strong>. Os códigos (interno e de barras) ficam em branco; os detalhes fiscais vão junto ao salvar. Revise e salve.
+  </p>
+  {% endif %}
+
+  {% if oculto_aqui %}
+  <p class="flex items-center gap-2 rounded-lg border border-warning/30 bg-warning/10 p-3 text-sm text-ink">
+    {% include "partials/icone_olho.html" %}
+    <span>Este produto está <strong>oculto em {{ request.empresa_atual.unidade }}</strong>: não aparece na lista nem nas vendas desta empresa.
+    Para mostrar de novo, marque a empresa na aba <strong>Empresa</strong>.</span>
+  </p>
+  {% endif %}
+
+  {% if form.non_field_errors %}
+  <div class="rounded-lg bg-danger-soft border border-danger/20 text-danger text-sm p-3">{{ form.non_field_errors }}</div>
+  {% endif %}
+
+  <div class="bg-surface border border-line rounded-xl">
+    <div class="abas m-4 mb-0">
+      <button type="button" data-aba="dados" class="aba">
+        Dados cadastrais <span data-ponto class="hidden h-2 w-2 rounded-full bg-danger"></span>
+      </button>
+      <button type="button" data-aba="fiscal" class="aba">
+        Detalhes fiscais <span data-ponto class="hidden h-2 w-2 rounded-full bg-danger"></span>
+      </button>
+      <button type="button" data-aba="empresas" class="aba">
+        Empresa <span data-ponto class="hidden h-2 w-2 rounded-full bg-danger"></span>
+      </button>
+      <button type="button" data-aba="fotos" class="aba">
+        Fotos {% if fotos %}<span class="rounded-full bg-primary-soft px-1.5 text-[10px] font-semibold text-primary-text">{{ fotos|length }}</span>{% endif %}
+      </button>
+    </div>
+
+    <div class="p-6">
+      <!-- ABA: DADOS CADASTRAIS -->
+      <form method="post" id="form-produto" data-painel="dados" novalidate
+            action="{% if object %}{% url 'produto_editar' object.pk %}{% else %}{% url 'produto_criar' %}{% endif %}">
+        {% csrf_token %}
+        {% if origem_clone %}<input type="hidden" name="clonar_de" value="{{ origem_clone.pk }}">{% endif %}
+        <div class="grid gap-6 xl:grid-cols-3">
+          <div class="space-y-5 xl:col-span-2">
+            <div class="grid grid-cols-1 gap-4 sm:grid-cols-6">
+              <div class="sm:col-span-2">
+                <label class="block text-sm font-medium">Código</label>
+                <input type="text" value="{{ object.codigo|default:'Automático' }}" disabled
+                       class="mt-1 w-full rounded-lg border border-line bg-page px-3 py-2 text-ink-soft tabular-nums">
+              </div>
+              <div class="sm:col-span-2">{% include "partials/campo.html" with campo=form.codigo_interno %}</div>
+              <div class="sm:col-span-2">{% include "partials/campo.html" with campo=form.codigo_barras %}</div>
+
+              <div class="sm:col-span-6">{% include "partials/campo.html" with campo=form.descricao %}</div>
+
+              <div class="sm:col-span-2">
+                <label for="id_grupo" class="block text-sm font-medium"><span class="text-danger">*</span>{{ form.grupo.label }}</label>
+                <div class="flex gap-2">
+                  {{ form.grupo }}
+                  {% include "partials/botao_gerenciar.html" with tipo="grupo" titulo="Grupos" singular="grupo" artigo="o" alvo="id_grupo" uso_curto="prod." uso_longo="produto(s)" %}
+                </div>
+                {% for erro in form.grupo.errors %}<p class="mt-1 text-xs text-danger" data-erro>{{ erro }}</p>{% endfor %}
+              </div>
+              <div class="sm:col-span-2">
+                <label for="id_subgrupo" class="block text-sm font-medium">{{ form.subgrupo.label }}</label>
+                <div class="flex gap-2">
+                  {{ form.subgrupo }}
+                  {% include "partials/botao_gerenciar.html" with tipo="subgrupo" titulo="Subgrupos" singular="subgrupo" artigo="o" alvo="id_subgrupo" uso_curto="prod." uso_longo="produto(s)" pai_campo="id_grupo" pai_rotulo="o grupo" %}
+                </div>
+                {% for erro in form.subgrupo.errors %}<p class="mt-1 text-xs text-danger" data-erro>{{ erro }}</p>{% endfor %}
+              </div>
+              <div class="sm:col-span-2">
+                <label for="id_fabricante" class="block text-sm font-medium">{{ form.fabricante.label }}</label>
+                <div class="flex gap-2">
+                  {{ form.fabricante }}
+                  {% include "partials/botao_gerenciar.html" with tipo="fabricante" titulo="Fabricantes" singular="fabricante" artigo="o" alvo="id_fabricante" uso_curto="prod." uso_longo="produto(s)" %}
+                </div>
+              </div>
+
+              <div class="sm:col-span-2">
+                <label for="id_similar" class="block text-sm font-medium">{{ form.similar.label }}</label>
+                <div class="flex gap-2">
+                  {{ form.similar }}
+                  {% include "partials/botao_gerenciar.html" with tipo="similar" titulo="Similares" singular="similar" artigo="o" alvo="id_similar" uso_curto="prod." uso_longo="produto(s)" %}
+                </div>
+                <p class="mt-1 text-xs text-ink-soft">{{ form.similar.help_text }}</p>
+              </div>
+              <div class="sm:col-span-2">
+                <label for="id_unidade" class="block text-sm font-medium"><span class="text-danger">*</span>{{ form.unidade.label }}</label>
+                <div class="flex gap-2">
+                  {{ form.unidade }}
+                  {% include "partials/botao_gerenciar.html" with tipo="unidade" titulo="Unidades de medida" singular="unidade" artigo="a" alvo="id_unidade" uso_curto="prod." uso_longo="produto(s)" %}
+                </div>
+                {% for erro in form.unidade.errors %}<p class="mt-1 text-xs text-danger" data-erro>{{ erro }}</p>{% endfor %}
+              </div>
+              <div class="sm:col-span-2">{% include "partials/campo.html" with campo=form.quantidade_caixa %}</div>
+
+              <div class="sm:col-span-2">{% include "partials/campo.html" with campo=form.codigo_barras_caixa %}</div>
+            </div>
+
+            {# ---------- Preços ---------- #}
+            <fieldset class="rounded-xl border border-line p-4">
+              <legend class="px-2 text-sm font-semibold text-ink-soft">Preços</legend>
+              <div class="grid grid-cols-1 gap-4 sm:grid-cols-4">
+                <div>{% include "partials/campo.html" with campo=form.preco_compra %}</div>
+                <div>{% include "partials/campo.html" with campo=form.tipo_margem %}</div>
+                <div>{% include "partials/campo.html" with campo=form.margem_lucro %}</div>
+                <div>
+                  <label class="block text-sm font-medium">Preço sugerido</label>
+                  <div class="mt-1 flex items-center gap-2">
+                    <output id="preco-sugerido" class="flex-1 rounded-lg border border-line bg-page px-3 py-2 tabular-nums text-ink-soft">R$ 0,00</output>
+                    <button type="button" id="usar-sugerido" class="btn btn-secundario btn-sm" title="Copiar para o preço de venda">Usar</button>
+                  </div>
+                </div>
+                <div>{% include "partials/campo.html" with campo=form.preco_venda %}</div>
+                <div>{% include "partials/campo.html" with campo=form.comissao %}</div>
+                <div>{% include "partials/campo.html" with campo=form.limite_desconto %}</div>
+              </div>
+            </fieldset>
+
+            {# ---------- Medidas ---------- #}
+            <fieldset class="rounded-xl border border-line p-4">
+              <legend class="px-2 text-sm font-semibold text-ink-soft">Medidas</legend>
+              <div class="grid grid-cols-2 gap-4 sm:grid-cols-4">
+                <div>{% include "partials/campo.html" with campo=form.peso %}</div>
+                <div>{% include "partials/campo.html" with campo=form.altura %}</div>
+                <div>{% include "partials/campo.html" with campo=form.largura %}</div>
+                <div>{% include "partials/campo.html" with campo=form.comprimento %}</div>
+              </div>
+            </fieldset>
+
+            <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
+              <div>{% include "partials/campo.html" with campo=form.observacao %}</div>
+              <div>{% include "partials/campo.html" with campo=form.informacoes_adicionais %}</div>
+            </div>
+          </div>
+
+          {# ---------- Configurações do produto ---------- #}
+          <aside class="h-fit rounded-xl border border-line bg-page/40 p-5 xl:sticky xl:top-4">
+            <h3 class="font-semibold">Configurações do produto</h3>
+            <div class="mt-4 space-y-4">
+              {% include "partials/interruptor.html" with campo=form.vender %}
+              {% include "partials/interruptor.html" with campo=form.controlar_estoque %}
+              {% include "partials/interruptor.html" with campo=form.habilitar_grade %}
+              {% include "partials/interruptor.html" with campo=form.agrupar_pedido %}
+              {% include "partials/interruptor.html" with campo=form.combo %}
+              <div class="border-t border-line pt-4">{% include "partials/interruptor.html" with campo=form.desativado %}</div>
+            </div>
+            {% if object %}
+            <div class="mt-5 rounded-lg border border-line bg-surface px-4 py-3">
+              <p class="text-xs text-ink-soft">Estoque em {{ empresa_atual.unidade|default:"—" }}</p>
+              {% if object.controlar_estoque %}
+              <p class="text-2xl font-semibold tabular-nums
+                        {% if saldo < 0 %}text-danger{% elif minimo and saldo < minimo %}text-warning{% endif %}">
+                {{ saldo|quantidade }} <span class="text-sm font-normal text-ink-soft">{{ object.unidade }}</span>
+              </p>
+              <div class="mt-1 flex items-center justify-between gap-2 text-xs text-ink-soft">
+                <span>Mínimo: <strong class="text-ink tabular-nums">{{ minimo|quantidade }}</strong>
+                  {% if minimo and saldo < minimo %}<span class="ml-1 rounded-full bg-warning/15 px-1.5 font-semibold text-warning">abaixo</span>{% endif %}
+                </span>
+                {% if request.pode_configurar %}
+                <button type="button" data-abrir-dialogo="dialogo-minimo" title="Editar estoque mínimo" aria-label="Editar estoque mínimo"
+                        class="inline-flex rounded-md p-1 text-ink-soft transition hover:bg-primary-soft hover:text-primary-text">
+                  {% include "partials/icone_lapis.html" %}
+                </button>
+                {% endif %}
+              </div>
+              {% if request.pode_configurar %}
+              <button type="button" data-abrir-dialogo="dialogo-rapido" class="btn btn-secundario btn-sm mt-3 w-full">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m7 16-4-4 4-4M17 8l4 4-4 4M3 12h18"/></svg>
+                Ajuste rápido
+              </button>
+              {% endif %}
+              {% else %}
+              <p class="text-sm text-ink-soft">Não controla estoque.</p>
+              {% endif %}
+            </div>
+            {% endif %}
+          </aside>
+        </div>
+
+        <div class="mt-6 flex items-center gap-4 border-t border-line pt-5">
+          <button type="submit" class="btn btn-primario">{% include "partials/icone_check.html" %} Salvar</button>
+          <a href="{% url 'produto_lista' %}" class="btn btn-texto">Cancelar</a>
+        </div>
+      </form>
+
+      <!-- ABAS AINDA SEM PRINT DE REFERÊNCIA -->
+      <!-- ABA: DETALHES FISCAIS (formulário próprio, por empresa) -->
+      <div data-painel="fiscal" class="hidden">{% include "produtos/_aba_fiscal.html" %}</div>
+      <!-- ABA: EMPRESA (os campos pertencem ao form-produto, salvam junto) -->
+      <div data-painel="empresas" class="hidden space-y-5">
+        <div class="flex flex-wrap items-start justify-between gap-3">
+          <div>
+            <h2 class="text-base font-semibold text-ink">Em quais empresas este produto aparece?</h2>
+            <p class="mt-1 text-sm text-ink-soft">
+              Desmarque as empresas onde o produto não deve aparecer nas pesquisas, na lista e nas vendas.
+              O cadastro continua o mesmo para todas; o estoque é de cada empresa.
+            </p>
+          </div>
+          <div class="flex gap-2">
+            <button type="button" class="btn btn-texto btn-sm" data-marcar-empresas="1">Marcar todas</button>
+            <button type="button" class="btn btn-texto btn-sm" data-marcar-empresas="0">Desmarcar todas</button>
+          </div>
+        </div>
+
+        {% if form.empresas.errors %}
+        <p data-erro class="rounded-lg border border-danger/20 bg-danger-soft p-3 text-sm text-danger">{{ form.empresas.errors.0 }}</p>
+        {% endif %}
+
+        <div class="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-3">
+          {% for opcao in form.empresas %}
+          <label class="flex cursor-pointer items-center gap-3 rounded-xl border border-line bg-surface p-4 transition
+                        hover:bg-primary-soft/40 has-checked:border-primary/40 has-checked:bg-primary-soft/60">
+            <span class="relative inline-flex shrink-0">
+              <input type="checkbox" name="{{ form.empresas.html_name }}" value="{{ opcao.data.value }}" form="form-produto"
+                     class="peer sr-only" data-empresa-produto {% if opcao.data.selected %}checked{% endif %}>
+              <span class="h-5 w-9 rounded-full bg-line transition peer-checked:bg-primary
+                           peer-focus-visible:ring-2 peer-focus-visible:ring-primary/30"></span>
+              <span class="absolute left-0.5 top-0.5 h-4 w-4 rounded-full bg-white shadow transition peer-checked:translate-x-4"></span>
+            </span>
+            <span class="min-w-0">
+              <span class="block truncate text-sm font-medium text-ink">{{ opcao.data.value.instance.unidade }}</span>
+              <span class="block truncate text-xs text-ink-soft">{{ opcao.data.value.instance.nome_exibicao }} · {{ opcao.data.value.instance.documento|documento }}</span>
+            </span>
+          </label>
+          {% endfor %}
+        </div>
+
+        <div class="flex items-center gap-4 border-t border-line pt-5">
+          <button type="submit" form="form-produto" class="btn btn-primario">{% include "partials/icone_check.html" %} Salvar</button>
+          <a href="{% url 'produto_lista' %}" class="btn btn-texto">Cancelar</a>
+        </div>
+      </div>
+      <!-- ABA: FOTOS -->
+      <div data-painel="fotos" class="hidden">{% include "produtos/_aba_fotos.html" %}</div>
+    </div>
+  </div>
+</div>
+
+{% if object %}
+<form method="post" action="{% url 'produto_excluir' object.pk %}" id="form-excluir-produto" hidden
+      data-confirmar-titulo="Excluir produto?"
+      data-confirmar="“{{ object }}” ({{ object.codigo }}) será excluído."
+      data-confirmar-aviso="{% if impedimento_exclusao %}Atenção: este produto {{ impedimento_exclusao }} e não poderá ser excluído — só desativado.{% else %}Esta ação não pode ser desfeita. Se não vai mais vender o produto, prefira desativar.{% endif %}">
+  {% csrf_token %}
+</form>
+{% endif %}
+
+{% include "partials/gerenciador_cadastro.html" %}
+
+{% if object and request.pode_configurar %}
+{# Janela "Organizar estoque": confere tudo o que mexe no estoque e corrige o saldo #}
+<dialog id="dialogo-organizar" aria-labelledby="organizar-titulo" data-url="{% url 'produto_estoque_organizar' object.pk %}"
+        class="dialogo-animado m-auto w-[calc(100%-2rem)] max-w-2xl rounded-2xl border border-line bg-surface p-0 text-ink shadow-2xl backdrop:bg-black/40">
+  <div class="flex items-start justify-between border-b border-line px-6 py-4">
+    <div>
+      <h2 id="organizar-titulo" class="text-lg font-semibold">Organizando o estoque</h2>
+      <p class="text-xs text-ink-soft">{{ object }} · todas as empresas</p>
+    </div>
+    <button type="button" data-fechar-dialogo title="Fechar" aria-label="Fechar"
+            class="-mr-2 inline-flex h-9 w-9 items-center justify-center rounded-full text-ink-soft transition
+                   hover:rotate-90 hover:bg-danger-soft hover:text-danger focus-visible:outline-none
+                   focus-visible:ring-2 focus-visible:ring-primary/40 [&_svg]:h-5 [&_svg]:w-5">
+      {% include "partials/icone_x.html" %}
+    </button>
+  </div>
+  <div class="space-y-5 px-6 py-5">
+    {# Etapas: acendem conforme são conferidas #}
+    <ol data-etapas class="flex flex-wrap gap-1.5" aria-live="polite">
+      {% for chave, nome in etapas_estoque %}
+      <li data-etapa="{{ chave }}"
+          class="inline-flex items-center gap-1.5 rounded-full bg-page px-3 py-1 text-xs font-medium text-ink-soft transition-colors duration-300">
+        <span data-marca class="h-1.5 w-1.5 rounded-full bg-line"></span>{{ nome }}
+      </li>
+      {% endfor %}
+    </ol>
+    <div class="h-1.5 overflow-hidden rounded-full bg-page" role="progressbar" aria-label="Progresso">
+      <div data-barra class="h-full w-0 rounded-full bg-linear-to-r from-primary to-accent transition-all duration-300"></div>
+    </div>
+    <div data-resultado class="hidden space-y-3 text-sm"></div>
+  </div>
+  <div class="flex items-center justify-end gap-3 rounded-b-2xl border-t border-line bg-page/60 px-6 py-4">
+    <button type="button" data-fechar-dialogo class="btn btn-primario">Fechar</button>
+  </div>
+</dialog>
+
+{# Janela "Ajuste rápido": entrada soma, saída subtrai #}
+<dialog id="dialogo-rapido" aria-labelledby="rapido-titulo"
+        class="dialogo-animado m-auto w-[calc(100%-2rem)] max-w-lg rounded-2xl border border-line bg-surface p-0 text-ink shadow-2xl backdrop:bg-black/40">
+  <div class="flex items-start justify-between border-b border-line px-6 py-4">
+    <div>
+      <h2 id="rapido-titulo" class="text-lg font-semibold">Ajuste rápido</h2>
+      <p class="text-xs text-ink-soft">{{ object }}</p>
+    </div>
+    <button type="button" data-fechar-dialogo title="Fechar" aria-label="Fechar"
+            class="-mr-2 inline-flex h-9 w-9 items-center justify-center rounded-full text-ink-soft transition
+                   hover:rotate-90 hover:bg-danger-soft hover:text-danger focus-visible:outline-none
+                   focus-visible:ring-2 focus-visible:ring-primary/40 [&_svg]:h-5 [&_svg]:w-5">
+      {% include "partials/icone_x.html" %}
+    </button>
+  </div>
+  <form method="post" action="{% url 'produto_estoque_rapido' object.pk %}" id="form-rapido" novalidate>
+    {% csrf_token %}
+    <div class="grid grid-cols-1 gap-4 px-6 py-5 sm:grid-cols-2">
+      <div>{% include "partials/campo.html" with campo=rapido_form.data %}</div>
+      <div>
+        <span class="block text-sm font-medium"><span class="text-danger">*</span>Operação</span>
+        <div class="mt-1 grid grid-cols-2 gap-1 rounded-xl bg-page p-1" role="radiogroup" aria-label="Operação">
+          {% for opcao in rapido_form.operacao %}
+          <label class="relative cursor-pointer">
+            <input type="radio" name="{{ opcao.data.name }}" value="{{ opcao.data.value }}" class="peer sr-only"
+                   {% if opcao.data.selected %}checked{% endif %}>
+            <span class="flex items-center justify-center gap-1.5 rounded-lg px-3 py-2 text-sm font-semibold text-ink-soft transition
+                         peer-focus-visible:ring-2 peer-focus-visible:ring-primary/40
+                         {% if opcao.data.value == "entrada" %}peer-checked:bg-success peer-checked:text-white{% else %}peer-checked:bg-danger peer-checked:text-white{% endif %}">
+              {% if opcao.data.value == "entrada" %}+{% else %}−{% endif %} {{ opcao.choice_label }}
+            </span>
+          </label>
+          {% endfor %}
+        </div>
+      </div>
+      <div>
+        <label class="block text-sm font-medium">Empresa</label>
+        <input type="text" value="{{ empresa_atual.unidade }} · {{ empresa_atual.nome_exibicao }}" disabled
+               class="mt-1 w-full truncate rounded-lg border border-line bg-page px-3 py-2 text-ink-soft">
+      </div>
+      <div>{% include "partials/campo.html" with campo=rapido_form.quantidade %}</div>
+    </div>
+    <div class="px-6 pb-4">
+      {% if movimentos %}
+        <div>
+          <p class="text-xs font-medium uppercase tracking-wide text-ink-soft">Últimas movimentações</p>
+          <ul class="mt-2 divide-y divide-line rounded-lg border border-line text-sm">
+            {% for m in movimentos %}
+            <li class="flex items-center justify-between gap-3 px-3 py-2">
+              <span class="min-w-0">
+                <span class="tabular-nums">{{ m.saldo_anterior|quantidade }} → <strong>{{ m.saldo_novo|quantidade }}</strong></span>
+                <span class="block truncate text-xs text-ink-soft">{{ m.criado_em|date:"d/m/Y H:i" }}{% if m.usuario %} · {{ m.usuario }}{% endif %}{% if m.motivo %} · {{ m.motivo }}{% endif %}</span>
+              </span>
+              <span class="shrink-0 text-xs font-semibold {% if m.quantidade < 0 %}text-danger{% else %}text-success{% endif %}">
+                {% if m.quantidade >= 0 %}+{% endif %}{{ m.quantidade|quantidade }}
+              </span>
+            </li>
+            {% endfor %}
+          </ul>
+        </div>
+        {% endif %}
+    </div>
+    {# Resumo ao vivo #}
+    <dl class="grid grid-cols-3 gap-2 border-t border-line bg-page/60 px-6 py-4 text-center text-sm" data-resumo-rapido
+        data-saldo="{{ saldo|stringformat:"s" }}">
+      <div><dt class="text-xs text-ink-soft">Estoque atual</dt><dd class="font-semibold tabular-nums">{{ saldo|quantidade }}</dd></div>
+      <div><dt class="text-xs text-ink-soft">Entrada / saída</dt><dd data-movimento class="font-semibold tabular-nums">0</dd></div>
+      <div><dt class="text-xs text-ink-soft">Saldo final</dt><dd data-final class="text-base font-bold tabular-nums">{{ saldo|quantidade }}</dd></div>
+    </dl>
+    <div class="flex items-center justify-end gap-3 rounded-b-2xl border-t border-line px-6 py-4">
+      <button type="button" data-fechar-dialogo class="btn btn-texto">Cancelar</button>
+      <button type="submit" class="btn btn-primario">{% include "partials/icone_check.html" %} Salvar</button>
+    </div>
+  </form>
+</dialog>
+
+{# Janela "Estoque mínimo" #}
+<dialog id="dialogo-minimo" aria-labelledby="minimo-titulo"
+        class="dialogo-animado m-auto w-[calc(100%-2rem)] max-w-sm rounded-2xl border border-line bg-surface p-0 text-ink shadow-2xl backdrop:bg-black/40">
+  <form method="post" action="{% url 'produto_estoque_minimo' object.pk %}" novalidate>
+    {% csrf_token %}
+    <div class="px-6 pt-5 pb-4">
+      <h2 id="minimo-titulo" class="text-lg font-semibold">Estoque mínimo</h2>
+      <p class="text-xs text-ink-soft">{{ object }} · {{ empresa_atual.unidade }}</p>
+      <div class="mt-4">{% include "partials/campo.html" with campo=minimo_form.estoque_minimo %}</div>
+      <p class="mt-2 text-xs text-ink-soft">Abaixo dessa quantidade, o produto aparece em destaque na lista.</p>
+    </div>
+    <div class="flex items-center justify-end gap-3 rounded-b-2xl border-t border-line bg-page/60 px-6 py-4">
+      <button type="button" data-fechar-dialogo class="btn btn-texto">Cancelar</button>
+      <button type="submit" class="btn btn-primario">{% include "partials/icone_check.html" %} Salvar</button>
+    </div>
+  </form>
+</dialog>
+{% endif %}
+
+<script>
+  (function () {
+    function el(id) { return document.getElementById(id); }
+    var form = el("form-produto");
+    Nexum.mascaras();
+    Nexum.abas();
+    document.querySelectorAll("[data-marcar-empresas]").forEach(function (b) {
+      b.addEventListener("click", function () {
+        document.querySelectorAll("[data-empresa-produto]").forEach(function (c) { c.checked = b.dataset.marcarEmpresas === "1"; });
+      });
+    });
+    Nexum.dialogos();
+    Nexum.gerenciador(form.querySelector("[name=csrfmiddlewaretoken]").value);
+
+    // ---------- Organizar estoque: etapas acendendo + resultado da conferência ----------
+    var dialogoOrganizar = el("dialogo-organizar");
+    var botaoOrganizar = document.querySelector("[data-organizar-estoque]");
+    if (dialogoOrganizar && botaoOrganizar) {
+      var corrigiu = false;
+      var etapasEl = dialogoOrganizar.querySelectorAll("[data-etapa]");
+      var barra = dialogoOrganizar.querySelector("[data-barra]");
+      var resultado = dialogoOrganizar.querySelector("[data-resultado]");
+      function texto(tag, classe, conteudo) {
+        var n = document.createElement(tag); n.className = classe; n.textContent = conteudo; return n;
+      }
+      function marcar(li, status) {
+        var cor = status === "ok" ? "bg-success/15 text-success" : "bg-page text-ink-soft line-through decoration-ink-soft/30";
+        li.className = "inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-medium transition-colors duration-300 " + cor;
+        li.querySelector("[data-marca]").className = "h-1.5 w-1.5 rounded-full " + (status === "ok" ? "bg-success" : "bg-line");
+      }
+      function mostrarResultado(r) {
+        resultado.innerHTML = "";
+        if (r.correcoes.length) {
+          corrigiu = true;
+          var caixa = texto("div", "rounded-xl border border-warning/40 bg-warning/10 p-3", "");
+          caixa.appendChild(texto("p", "font-semibold", "Saldo corrigido"));
+          r.correcoes.forEach(function (c) {
+            caixa.appendChild(texto("p", "text-ink", c.empresa + ": " + c.antes + " → " + c.depois + " " + r.unidade));
+          });
+          resultado.appendChild(caixa);
+        } else {
+          resultado.appendChild(texto("p", "rounded-xl border border-success/30 bg-success/10 p-3 font-medium text-success",
+            "Tudo certo: nenhuma inconsistência no estoque."));
+        }
+        if (r.conferidas.length) {
+          var lista = texto("p", "text-ink-soft", "Saldos conferidos: " +
+            r.conferidas.map(function (c) { return c.empresa + " " + c.saldo + " " + r.unidade; }).join(" · "));
+          resultado.appendChild(lista);
+        }
+        if (r.incoerentes.length) {
+          resultado.appendChild(texto("p", "rounded-xl border border-danger/20 bg-danger-soft p-3 text-danger",
+            r.incoerentes.length + " movimentação(ões) com valores incoerentes: " +
+            r.incoerentes.map(function (m) { return m.tipo + " de " + m.data + " (" + m.empresa + ")"; }).join("; ")));
+        }
+        var inativas = r.etapas.filter(function (e) { return e.status === "inativo"; }).map(function (e) { return e.nome; });
+        if (inativas.length) {
+          resultado.appendChild(texto("p", "text-xs text-ink-soft", "Ainda sem módulo no sistema (não há o que conferir): " + inativas.join(", ") + "."));
+        }
+        resultado.classList.remove("hidden");
+      }
+      botaoOrganizar.addEventListener("click", function () {
+        corrigiu = false;
+        resultado.classList.add("hidden");
+        barra.style.width = "0%";
+        etapasEl.forEach(function (li) {
+          li.className = "inline-flex items-center gap-1.5 rounded-full bg-page px-3 py-1 text-xs font-medium text-ink-soft transition-colors duration-300";
+          li.querySelector("[data-marca]").className = "h-1.5 w-1.5 rounded-full bg-line";
+        });
+        dialogoOrganizar.showModal();
+        var corpo = new FormData();
+        fetch(dialogoOrganizar.dataset.url, {
+          method: "POST", body: corpo,
+          headers: { "X-CSRFToken": form.querySelector("[name=csrfmiddlewaretoken]").value }
+        })
+          .then(function (resp) { return resp.json(); })
+          .then(function (r) {
+            if (!r.ok) { resultado.textContent = r.mensagem; resultado.classList.remove("hidden"); return; }
+            // As etapas acendem uma a uma; no fim aparece o resultado
+            r.etapas.forEach(function (etapa, i) {
+              setTimeout(function () {
+                var li = dialogoOrganizar.querySelector('[data-etapa="' + etapa.chave + '"]');
+                if (li) { marcar(li, etapa.status); li.title = etapa.detalhe; }
+                barra.style.width = Math.round((i + 1) / r.etapas.length * 100) + "%";
+                if (i === r.etapas.length - 1) mostrarResultado(r);
+              }, 180 * (i + 1));
+            });
+          })
+          .catch(function () {
+            resultado.textContent = "Não foi possível falar com o servidor. Tente de novo.";
+            resultado.classList.remove("hidden");
+          });
+      });
+      // Se corrigiu algum saldo, a página se atualiza ao fechar
+      dialogoOrganizar.addEventListener("close", function () { if (corrigiu) window.location.reload(); });
+    }
+
+    // ---------- Ajuste rápido: estoque atual, movimento e saldo final ----------
+    var resumo = document.querySelector("[data-resumo-rapido]");
+    if (resumo) {
+      var formRapido = el("form-rapido");
+      var atual = parseFloat(resumo.dataset.saldo.replace(",", ".")) || 0;
+      function qtd(v) {
+        var texto = (Math.round(v * 1000) / 1000).toFixed(3).replace(/\.?0+$/, "");
+        return texto.replace(".", ",").replace(/\B(?=(\d{3})+(?!\d))/g, ".");
+      }
+      function atualizarResumo() {
+        var bruto = (el("id_rapido-quantidade").value || "").trim();
+        if (bruto.indexOf(",") >= 0) bruto = bruto.replace(/\./g, "").replace(",", ".");
+        var q = Math.abs(parseFloat(bruto) || 0);
+        var saida = formRapido.querySelector("[name='rapido-operacao']:checked").value === "saida";
+        var mov = saida ? -q : q, final = atual + mov;
+        var movEl = resumo.querySelector("[data-movimento]"), finalEl = resumo.querySelector("[data-final]");
+        movEl.textContent = (mov > 0 ? "+" : mov < 0 ? "−" : "") + qtd(Math.abs(mov));
+        movEl.className = "font-semibold tabular-nums " + (mov > 0 ? "text-success" : mov < 0 ? "text-danger" : "");
+        finalEl.textContent = qtd(final);
+        finalEl.className = "text-base font-bold tabular-nums " + (final < 0 ? "text-danger" : "");
+      }
+      formRapido.addEventListener("input", atualizarResumo);
+      formRapido.addEventListener("change", atualizarResumo);
+      atualizarResumo();
+    }
+
+    // ---------- Subgrupos acompanham o grupo escolhido ----------
+    var grupo = el("id_grupo"), subgrupo = el("id_subgrupo");
+    grupo.addEventListener("change", function () {
+      var anterior = subgrupo.value;
+      subgrupo.innerHTML = '<option value="">Nenhum</option>';
+      if (!grupo.value) return;
+      fetch("{% url 'cadastro_simples_lista' 'subgrupo' %}?ativos=1&pai=" + encodeURIComponent(grupo.value))
+        .then(function (r) { return r.json(); })
+        .then(function (r) {
+          r.itens.forEach(function (s) { subgrupo.add(new Option(s.nome, s.id, false, String(s.id) === anterior)); });
+        });
+    });
+
+    // ---------- Preço sugerido = compra + margem (percentual ou valor) ----------
+    function numero(id) {
+      var v = (el(id).value || "").trim();
+      if (v.indexOf(",") >= 0) v = v.replace(/\./g, "").replace(",", ".");
+      return parseFloat(v) || 0;
+    }
+    function reais(v) {
+      return "R$ " + v.toFixed(2).replace(".", ",").replace(/\B(?=(\d{3})+(?!\d))/g, ".");
+    }
+    var sugerido = 0;
+    function calcular() {
+      var compra = numero("id_preco_compra"), margem = numero("id_margem_lucro");
+      sugerido = el("id_tipo_margem").value === "valor" ? compra + margem : compra * (1 + margem / 100);
+      sugerido = Math.round(sugerido * 100) / 100;
+      el("preco-sugerido").textContent = reais(sugerido);
+    }
+    ["id_preco_compra", "id_margem_lucro", "id_tipo_margem"].forEach(function (id) {
+      el(id).addEventListener("input", calcular);
+      el(id).addEventListener("change", calcular);
+    });
+    el("usar-sugerido").addEventListener("click", function () {
+      el("id_preco_venda").value = sugerido.toFixed(2).replace(".", ",");
+      el("id_preco_venda").focus();
+    });
+    calcular();
+  })();
+</script>
+{% endblock %}

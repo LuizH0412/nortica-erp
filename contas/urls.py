@@ -16,6 +16,7 @@ urlpatterns = [
     path("usuarios/novo/", views.UsuarioCriarView.as_view(), name="usuario_criar"),
     path("usuarios/<int:pk>/editar/", views.UsuarioEditarView.as_view(), name="usuario_editar"),
     path("usuarios/<int:pk>/senha/", views.usuario_senha, name="usuario_senha"),
+    path("usuarios/excluir-selecionados/", views.usuario_excluir_selecionados, name="usuario_excluir_selecionados"),
     path("usuarios/<int:pk>/perfis/adicionar/", views.usuario_acesso_adicionar, name="usuario_acesso_adicionar"),
     path("usuarios/<int:pk>/perfis/remover/", views.usuario_acesso_remover, name="usuario_acesso_remover"),
 
@@ -24,4 +25,5 @@ urlpatterns = [
     path("perfis/novo/", views.PerfilCriarView.as_view(), name="perfil_criar"),
     path("perfis/<int:pk>/editar/", views.PerfilEditarView.as_view(), name="perfil_editar"),
     path("perfis/<int:pk>/excluir/", views.perfil_excluir, name="perfil_excluir"),
+    path("perfis/excluir-selecionados/", views.perfil_excluir_selecionados, name="perfil_excluir_selecionados"),
 ]

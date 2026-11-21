@@ -3,16 +3,17 @@ from django.contrib.auth.decorators import login_required
 from django.db.models import ProtectedError, Q
 from django.http import JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
-from django.urls import reverse_lazy
+from django.urls import reverse
 from django.views.decorators.http import require_POST
 from django.views.generic import CreateView, ListView, UpdateView
 
 from contas.permissions import (
     AdministradorMixin,
     MasterMixin,
+    administrador_requerido,
     master_requerido,
 )
-from core.listas import FiltroSituacaoMixin, OrdenacaoMixin
+from core.listas import FiltroSituacaoMixin, OrdenacaoMixin, excluir_selecionados
 
 from . import consultas
 from .forms import EmpresaForm
@@ -54,10 +55,7 @@ def sem_acesso(request):
 
 class EmpresaListView(AdministradorMixin, FiltroSituacaoMixin, OrdenacaoMixin, ListView):
     campo_ativo = "ativa"
-    ordenacoes = {
-        "unidade": "unidade", "empresa": ["nome_fantasia", "razao_social"],
-        "documento": "documento", "cidade": "municipio__nome", "situacao": "ativa",
-    }
+    ordenacoes = {"codigo": "pk", "unidade": "unidade", "empresa": ["nome_fantasia", "razao_social"]}  # só Código e nome têm seta
     template_name = "empresas/lista.html"
     context_object_name = "empresas"
 
@@ -87,8 +85,10 @@ class EmpresaCriarView(MasterMixin, CreateView):
     model = Empresa
     form_class = EmpresaForm
     template_name = "empresas/form.html"
-    success_url = reverse_lazy("empresa_lista")
     extra_context = {"titulo": "Nova empresa"}
+
+    def get_success_url(self):
+        return reverse("empresa_editar", args=[self.object.pk])  # continua no cadastro
 
     def form_valid(self, form):
         messages.success(self.request, "Empresa cadastrada com sucesso.")
@@ -99,14 +99,18 @@ class EmpresaEditarView(AdministradorMixin, UpdateView):
     model = Empresa
     form_class = EmpresaForm
     template_name = "empresas/form.html"
-    success_url = reverse_lazy("empresa_lista")
     extra_context = {"titulo": "Editar empresa"}
+
+    def get_success_url(self):
+        return reverse("empresa_editar", args=[self.object.pk])  # continua no cadastro
 
     def get_context_data(self, **kwargs):
         contexto = super().get_context_data(**kwargs)
         # Sem registros ligados, o "Excluir" pede só a confirmação; com registros, abre a página que explica
         if self.request.user.eh_master:
             contexto["impedimentos_exclusao"] = self.object.vinculos_que_impedem_exclusao()
+        from .models import CertificadoDigital
+        contexto["certificado"] = CertificadoDigital.objects.filter(empresa=self.object).first()
         return contexto
 
     def form_valid(self, form):
@@ -154,3 +158,77 @@ def consulta_cep(request):
     except consultas.ConsultaErro as erro:
         return JsonResponse({"ok": False, "mensagem": str(erro)})
     return JsonResponse({"ok": True, "dados": dados})
+
+
+@master_requerido
+@require_POST
+def empresa_excluir_selecionados(request):
+    def impedimento(empresa):
+        vinculos = empresa.vinculos_que_impedem_exclusao()
+        return "já tem " + ", ".join(vinculos) if vinculos else None
+
+    excluir_selecionados(request, Empresa.objects.all(), singular="empresa", plural="empresas",
+                         artigo="a", impedimento=impedimento)
+    return redirect("empresa_lista")
+
+
+# ---------- Certificado digital (aba Fiscal) ----------
+
+def _voltar_fiscal(pk):
+    return redirect(reverse("empresa_editar", args=[pk]) + "#fiscal")
+
+
+@administrador_requerido
+@require_POST
+def empresa_certificado_enviar(request, pk):
+    from .certificado import CertificadoInvalido, cifrar, ler_certificado
+    from .models import CertificadoDigital
+
+    empresa = get_object_or_404(Empresa, pk=pk)
+    arquivo = request.FILES.get("certificado")
+    senha = request.POST.get("senha", "")
+    if not arquivo or not senha:
+        messages.error(request, "Escolha o arquivo do certificado (.pfx ou .p12) e informe a senha.")
+        return _voltar_fiscal(pk)
+    if not arquivo.name.lower().endswith((".pfx", ".p12")):
+        messages.error(request, "O certificado A1 é um arquivo .pfx ou .p12.")
+        return _voltar_fiscal(pk)
+    conteudo = arquivo.read()
+    try:
+        dados = ler_certificado(conteudo, senha)
+    except CertificadoInvalido as erro:
+        messages.error(request, str(erro))
+        return _voltar_fiscal(pk)
+
+    from django.utils import timezone
+    if dados["validade"] <= timezone.now():
+        messages.error(request, f"Este certificado venceu em {timezone.localtime(dados['validade']):%d/%m/%Y}.")
+        return _voltar_fiscal(pk)
+    # O certificado tem que ser da empresa (a filial pode usar o da matriz: mesmo CNPJ base)
+    doc_empresa, doc_cert = empresa.documento, dados["documento"]
+    if doc_cert and doc_empresa:
+        mesma = doc_cert[:8] == doc_empresa[:8] if len(doc_empresa) == 14 and len(doc_cert) == 14 else doc_cert == doc_empresa
+        if not mesma:
+            messages.error(request, f"O certificado é de outro CPF/CNPJ ({doc_cert}), não de {empresa.nome_exibicao}.")
+            return _voltar_fiscal(pk)
+
+    CertificadoDigital.objects.update_or_create(empresa=empresa, defaults={
+        "descricao": dados["titular"][:120],  # a descrição é o nome que vem no certificado
+        "nome_arquivo": arquivo.name[:150],
+        "arquivo_cifrado": cifrar(conteudo), "senha_cifrada": cifrar(senha.encode()),
+        "titular": dados["titular"], "documento": doc_cert,
+        "emitido_em": dados["emitido_em"], "validade": dados["validade"], "enviado_por": request.user,
+    })
+    messages.success(request, f"Certificado de {dados['titular']} adicionado. Vale até "
+                              f"{timezone.localtime(dados['validade']):%d/%m/%Y}.")
+    return _voltar_fiscal(pk)
+
+
+@administrador_requerido
+@require_POST
+def empresa_certificado_excluir(request, pk):
+    empresa = get_object_or_404(Empresa, pk=pk)
+    from .models import CertificadoDigital
+    CertificadoDigital.objects.filter(empresa=empresa).delete()
+    messages.success(request, "Certificado digital excluído.")
+    return _voltar_fiscal(pk)

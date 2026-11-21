@@ -1,0 +1,317 @@
+{% extends "base_app.html" %}
+{% block title %}{{ titulo }} · Nexum{% endblock %}
+{% block page_title %}Vínculos fiscais{% endblock %}
+
+{% block page %}
+<div class="max-w-7xl space-y-5">
+  <div class="flex flex-wrap items-center justify-between gap-3">
+    <nav class="text-sm text-ink-soft">
+      <a href="{% url 'produto_vinculos_fiscais' %}" class="hover:text-ink">Vínculos fiscais</a>
+      <span class="mx-1">/</span>
+      <span class="font-medium text-ink">{% if object %}{{ object.pk }} · {% endif %}{{ titulo }}</span>
+    </nav>
+    <div class="flex flex-wrap items-center gap-2">
+      <a href="{% url 'produto_vinculos_fiscais' %}" class="btn btn-secundario">{% include "partials/icone_voltar.html" %} Voltar</a>
+      {% if object %}
+      <a href="{% url 'vinculo_criar' %}" class="btn btn-novo">{% include "partials/icone_mais.html" %} Novo cadastro</a>
+      <button type="submit" form="form-clonar-vinculo" class="btn btn-secundario"
+              title="Cria um vínculo novo com as mesmas configurações e tributação">{% include "partials/icone_copiar.html" %} Clonar vínculo</button>
+      <button type="submit" form="form-excluir-vinculo" class="btn btn-perigo">{% include "partials/icone_lixeira.html" %} Excluir</button>
+      {% endif %}
+    </div>
+  </div>
+
+  {# ---------- Dados do vínculo ---------- #}
+  <form method="post" class="rounded-xl border border-line bg-surface p-6" novalidate
+        action="{% if object %}{% url 'vinculo_editar' object.pk %}{% else %}{% url 'vinculo_criar' %}{% endif %}">
+    {% csrf_token %}
+    <div class="grid grid-cols-1 gap-5 lg:grid-cols-12">
+      <div class="lg:col-span-6">{% include "partials/campo.html" with campo=form.nome %}</div>
+      <div class="lg:col-span-4">{% include "partials/campo.html" with campo=form.tipo_item %}</div>
+      <div class="flex items-end lg:col-span-2">
+        <button type="submit" class="btn btn-primario w-full">{% include "partials/icone_check.html" %} Salvar</button>
+      </div>
+    </div>
+    <div class="mt-5 flex flex-wrap gap-x-10 gap-y-4 border-t border-line pt-5">
+      {% include "partials/interruptor.html" with campo=form.padrao %}
+      {% include "partials/interruptor.html" with campo=form.desativado %}
+    </div>
+  </form>
+
+  {% if object %}
+  <div class="rounded-xl border border-line bg-surface">
+    <div class="abas m-4 mb-0">
+      <button type="button" data-aba="configuracoes" class="aba">
+        Configurações <span class="rounded-full bg-page px-1.5 text-[10px] font-semibold text-ink-soft">{{ configuracoes|length }}</span>
+      </button>
+      <button type="button" data-aba="ncms" class="aba">
+        NCMs <span class="rounded-full bg-page px-1.5 text-[10px] font-semibold text-ink-soft">{{ ncms|length }}</span>
+      </button>
+      <button type="button" data-aba="produtos" class="aba">
+        Produtos <span class="rounded-full bg-page px-1.5 text-[10px] font-semibold text-ink-soft">{{ total_produtos }}</span>
+      </button>
+    </div>
+
+    <div class="p-6">
+      {# ---------- ABA: CONFIGURAÇÕES ---------- #}
+      <div data-painel="configuracoes" class="hidden space-y-4">
+        <div class="flex flex-wrap items-center justify-between gap-3">
+          <p class="max-w-2xl text-sm text-ink-soft">
+            Uma configuração para cada situação: documento (NF-e ou NFC-e), de qual UF para qual UF e o regime tributário.
+            Em cada uma, a tributação de <strong>entrada</strong> (compra) e de <strong>saída</strong> (venda).
+          </p>
+          <button type="button" class="btn btn-novo" data-abrir-config data-titulo="Adicionar configuração"
+                  data-url="{% url 'vinculo_configuracao_adicionar' object.pk %}">
+            {% include "partials/icone_mais.html" %} Adicionar configuração
+          </button>
+        </div>
+
+        {% for c in configuracoes %}
+        <article class="rounded-xl border border-line">
+          <header class="flex flex-wrap items-center justify-between gap-3 border-b border-line px-4 py-3">
+            <div class="flex flex-wrap items-center gap-2 text-sm">
+              <span class="rounded-md {% if c.documento == 'nfce' %}bg-success/15 text-success{% else %}bg-primary-soft text-primary-text{% endif %} px-2 py-0.5 text-xs font-bold">{{ c.get_documento_display }}</span>
+              <span class="font-medium">{{ c.uf_origem }}</span>
+              <svg class="h-4 w-4 text-ink-soft" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
+              <span class="font-medium">{% if c.uf_destino == "**" %}Todas as UFs{% else %}{{ c.uf_destino }}{% endif %}</span>
+              <span class="text-ink-soft">·</span>
+              <span class="text-ink-soft">{{ c.get_regime_display }}</span>
+              <span class="text-xs text-ink-soft">(código {{ c.pk }})</span>
+            </div>
+            <div class="flex items-center gap-1">
+              <button type="button" class="rounded-md p-1.5 text-ink-soft transition hover:bg-primary-soft hover:text-primary-text"
+                      title="Clonar para outro documento, UF ou regime" aria-label="Clonar configuração"
+                      data-abrir-config data-titulo="Clonar configuração" data-url="{% url 'vinculo_configuracao_clonar' object.pk c.pk %}"
+                      data-documento="{{ c.documento }}" data-uf-origem="{{ c.uf_origem }}" data-uf-destino="{{ c.uf_destino }}" data-regime="{{ c.regime }}">
+                {% include "partials/icone_copiar.html" %}
+              </button>
+              <form method="post" action="{% url 'vinculo_configuracao_excluir' object.pk c.pk %}"
+                    data-confirmar-titulo="Excluir configuração?" data-confirmar="A configuração {{ c }} e a tributação dela serão excluídas.">
+                {% csrf_token %}
+                <button type="submit" class="rounded-md p-1.5 text-ink-soft transition hover:bg-danger-soft hover:text-danger"
+                        title="Excluir configuração" aria-label="Excluir configuração">{% include "partials/icone_lixeira.html" %}</button>
+              </form>
+            </div>
+          </header>
+          <div class="grid gap-3 p-4 {% if c.documento == 'nfe' %}sm:grid-cols-2{% endif %}">
+            {% for operacao, t in c.itens %}
+            <a href="{% url 'vinculo_tributacao' object.pk c.pk operacao %}"
+               class="group flex items-center justify-between gap-3 rounded-lg border border-line px-4 py-3 transition hover:border-primary/40 hover:bg-primary-soft/40">
+              <span class="flex items-center gap-3">
+                <span class="flex h-9 w-9 items-center justify-center rounded-lg {% if operacao == 'entrada' %}bg-primary-soft text-primary-text{% else %}bg-success/15 text-success{% endif %}">
+                  {% if operacao == "entrada" %}
+                  <svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 5v14M19 12l-7 7-7-7"/></svg>
+                  {% else %}
+                  <svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 19V5M5 12l7-7 7 7"/></svg>
+                  {% endif %}
+                </span>
+                <span>
+                  <span class="block text-sm font-medium">{% if operacao == "entrada" %}Entrada (compra){% else %}Saída (venda){% endif %}</span>
+                  {% if t %}
+                  <span class="block text-xs text-ink-soft">CFOP {{ t.cfop }} · {% if c.usa_csosn %}CSOSN{% else %}CST{% endif %} {{ t.icms_cst }}{% if t.icms_aliquota %} · ICMS {{ t.icms_aliquota|floatformat:2 }}%{% endif %} · PIS/COFINS {{ t.pis_cst }}/{{ t.cofins_cst }}</span>
+                  {% else %}<span class="block text-xs text-warning">Ainda não configurada</span>{% endif %}
+                </span>
+              </span>
+              <span class="text-xs font-medium text-primary-text opacity-0 transition group-hover:opacity-100">Editar →</span>
+            </a>
+            {% endfor %}
+          </div>
+        </article>
+        {% empty %}
+        <div class="rounded-xl border border-dashed border-line p-8 text-center text-sm text-ink-soft">
+          Nenhuma configuração ainda. Clique em <strong>Adicionar configuração</strong> para dizer em que situação este vínculo vale.
+        </div>
+        {% endfor %}
+      </div>
+
+      {# ---------- ABA: NCMs ---------- #}
+      <div data-painel="ncms" class="hidden space-y-4">
+        <p class="max-w-3xl text-sm text-ink-soft">
+          Produtos com estas NCMs que <strong>não têm vínculo escolhido</strong> nos detalhes fiscais usam este vínculo.
+          Cada NCM só pode estar em um vínculo.
+        </p>
+        <form method="post" action="{% url 'vinculo_ncm_adicionar' object.pk %}" class="flex flex-wrap items-start gap-2">
+          {% csrf_token %}
+          <div class="min-w-72 flex-1 max-w-2xl">
+            <label for="vinculo-ncm" class="sr-only">NCM</label>
+            <select name="ncm" id="vinculo-ncm" data-atualizar-url="{% url 'ncm_busca' %}" data-atualizar-todos
+                    class="block w-full rounded-lg border border-line bg-surface px-3 py-2.5 text-sm focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/30">
+              <option value="">Digite o código ou a descrição da NCM</option>
+            </select>
+          </div>
+          <button type="submit" class="btn btn-primario">{% include "partials/icone_mais.html" %} Vincular NCM</button>
+        </form>
+        {% if ncms %}
+        <ul class="divide-y divide-line rounded-xl border border-line">
+          {% for item, descricao in ncms %}
+          <li class="flex items-center gap-3 px-4 py-2.5 text-sm">
+            <span class="font-mono font-medium tabular-nums">{{ item.ncm }}</span>
+            <span class="min-w-0 flex-1 truncate text-ink-soft">{{ descricao|default:"—" }}</span>
+            <form method="post" action="{% url 'vinculo_ncm_remover' object.pk item.pk %}"
+                  data-confirmar-titulo="Desvincular NCM?" data-confirmar="A NCM {{ item.ncm }} sai deste vínculo." data-confirmar-botao="Desvincular">
+              {% csrf_token %}
+              <button type="submit" class="rounded-md p-1.5 text-ink-soft transition hover:bg-danger-soft hover:text-danger"
+                      title="Desvincular NCM" aria-label="Desvincular NCM {{ item.ncm }}">{% include "partials/icone_x.html" %}</button>
+            </form>
+          </li>
+          {% endfor %}
+        </ul>
+        {% else %}
+        <div class="rounded-xl border border-dashed border-line p-6 text-center text-sm text-ink-soft">Nenhuma NCM vinculada.</div>
+        {% endif %}
+      </div>
+
+      {# ---------- ABA: PRODUTOS ---------- #}
+      <div data-painel="produtos" class="hidden space-y-4">
+        <form method="post" action="{% url 'vinculo_produto_adicionar' object.pk %}" class="grid gap-2 md:grid-cols-12 md:items-start">
+          {% csrf_token %}
+          <div class="md:col-span-6">
+            <label for="vinculo-produto" class="block text-xs font-medium text-ink-soft">Produto</label>
+            <select name="produto" id="vinculo-produto" data-atualizar-url="{% url 'produto_busca' %}" data-atualizar-todos
+                    class="mt-1 block w-full rounded-lg border border-line bg-surface px-3 py-2.5 text-sm focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/30">
+              <option value="">Digite o código, a descrição ou o código de barras</option>
+            </select>
+          </div>
+          <div class="md:col-span-4">
+            <label for="vinculo-empresa" class="block text-xs font-medium text-ink-soft">Empresa</label>
+            <select name="empresa" id="vinculo-empresa"
+                    class="mt-1 block w-full rounded-lg border border-line bg-surface px-3 py-2.5 text-sm focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/30">
+              {% for e in empresas %}<option value="{{ e.pk }}" {% if e == empresa_filtro %}selected{% endif %}>{{ e.unidade }}</option>{% endfor %}
+            </select>
+          </div>
+          <div class="md:col-span-2 md:pt-5">
+            <button type="submit" class="btn btn-primario w-full">{% include "partials/icone_mais.html" %} Vincular</button>
+          </div>
+        </form>
+
+        <div class="flex flex-wrap items-center justify-between gap-3 border-t border-line pt-4">
+          <h3 class="text-sm font-semibold">Produtos neste vínculo{% if empresa_filtro %} em {{ empresa_filtro.unidade }}{% endif %}</h3>
+          {% if empresas|length > 1 %}
+          <nav class="flex flex-wrap gap-1.5" aria-label="Filtrar por empresa">
+            {% for e in empresas %}
+            <a href="?empresa={{ e.pk }}#produtos"
+               class="rounded-full border px-3 py-1 text-xs transition {% if e == empresa_filtro %}border-primary/50 bg-primary-soft font-medium text-primary-text{% else %}border-line hover:bg-page{% endif %}">{{ e.unidade }}</a>
+            {% endfor %}
+          </nav>
+          {% endif %}
+        </div>
+        {% if produtos_vinculados %}
+        <div class="overflow-hidden rounded-xl border border-line">
+          <table class="w-full text-sm">
+            <thead class="bg-page text-left text-ink-soft">
+              <tr>
+                <th class="px-4 py-2.5 font-medium">Código</th>
+                <th class="px-4 py-2.5 font-medium">Produto</th>
+                <th class="px-4 py-2.5 font-medium">Empresa</th>
+                <th class="w-12 px-2 py-2.5"></th>
+              </tr>
+            </thead>
+            <tbody class="divide-y divide-line">
+              {% for d in produtos_vinculados %}
+              <tr class="hover:bg-primary-soft/40">
+                <td class="px-4 py-2.5 tabular-nums text-ink-soft"><a href="{% url 'produto_editar' d.produto.pk %}#fiscal" class="hover:underline">{{ d.produto.codigo }}</a></td>
+                <td class="px-4 py-2.5">
+                  <a href="{% url 'produto_editar' d.produto.pk %}#fiscal" class="font-medium hover:underline">{{ d.produto }}</a>
+                  {% if d.produto.codigo_barras %}<span class="block text-xs text-ink-soft">{{ d.produto.codigo_barras }}</span>{% endif %}
+                </td>
+                <td class="px-4 py-2.5">{{ d.empresa.unidade }}</td>
+                <td class="px-2 py-2.5">
+                  <form method="post" action="{% url 'vinculo_produto_remover' object.pk d.pk %}"
+                        data-confirmar-titulo="Tirar do vínculo?" data-confirmar="“{{ d.produto }}” sai deste vínculo em {{ d.empresa.unidade }}."
+                        data-confirmar-aviso="O produto passa a usar o vínculo da NCM ou o vínculo padrão." data-confirmar-botao="Tirar">
+                    {% csrf_token %}
+                    <button type="submit" class="rounded-md p-1.5 text-ink-soft transition hover:bg-danger-soft hover:text-danger"
+                            title="Tirar do vínculo" aria-label="Tirar {{ d.produto }} do vínculo">{% include "partials/icone_lixeira.html" %}</button>
+                  </form>
+                </td>
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+        {% else %}
+        <div class="rounded-xl border border-dashed border-line p-6 text-center text-sm text-ink-soft">
+          Nenhum produto neste vínculo{% if empresa_filtro %} em {{ empresa_filtro.unidade }}{% endif %}.
+        </div>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+
+  {# Janela "Adicionar configuração" / "Clonar configuração" #}
+  <dialog id="dialogo-config" aria-labelledby="config-titulo"
+          class="dialogo-animado m-auto w-[calc(100%-2rem)] max-w-2xl rounded-2xl border border-line bg-surface p-0 text-ink shadow-2xl backdrop:bg-black/40">
+    <form method="post" action="" data-form-config novalidate>
+      {% csrf_token %}
+      <div class="px-6 pt-5 pb-4">
+        <h2 id="config-titulo" class="text-lg font-semibold" data-titulo-config>Adicionar configuração</h2>
+        <p class="text-xs text-ink-soft">Em que situação esta tributação vale.</p>
+        <div class="mt-5 grid grid-cols-1 gap-4 sm:grid-cols-2">
+          <div>{% include "partials/campo.html" with campo=config_form.documento %}</div>
+          <div>{% include "partials/campo.html" with campo=config_form.regime %}</div>
+          <div>{% include "partials/campo.html" with campo=config_form.uf_origem %}</div>
+          <div>
+            {% include "partials/campo.html" with campo=config_form.uf_destino %}
+            <p class="mt-1 hidden text-xs text-ink-soft" data-aviso-nfce>NFC-e é sempre dentro do estado: o destino é a própria UF de origem.</p>
+          </div>
+        </div>
+      </div>
+      <div class="flex items-center justify-end gap-3 rounded-b-2xl border-t border-line bg-page/60 px-6 py-4">
+        <button type="button" data-fechar-config class="btn btn-texto">Cancelar</button>
+        <button type="submit" class="btn btn-primario">{% include "partials/icone_check.html" %} Salvar</button>
+      </div>
+    </form>
+  </dialog>
+
+  <form method="post" action="{% url 'vinculo_clonar' object.pk %}" id="form-clonar-vinculo" hidden
+        data-confirmar-titulo="Clonar vínculo?" data-confirmar-tipo="info" data-confirmar-botao="Clonar"
+        data-confirmar="Será criado “{{ object }} (cópia)” com as mesmas configurações e tributação."
+        data-confirmar-aviso="Os produtos, as NCMs e o “padrão” não vão para a cópia.">
+    {% csrf_token %}
+  </form>
+  <form method="post" action="{% url 'vinculo_excluir' object.pk %}" id="form-excluir-vinculo" hidden
+        data-confirmar-titulo="Excluir vínculo fiscal?" data-confirmar="“{{ object }}” e as configurações dele serão excluídos."
+        data-confirmar-aviso="{% if total_produtos %}Atenção: ele tem {{ total_produtos }} produto(s) e não poderá ser excluído — só desativado.{% else %}Esta ação não pode ser desfeita.{% endif %}">
+    {% csrf_token %}
+  </form>
+  {% endif %}
+</div>
+
+<script>
+  (function () {
+    if (!document.querySelector("[data-aba]")) return;
+    Nexum.abas();
+    var dialogo = document.getElementById("dialogo-config");
+    var form = dialogo.querySelector("[data-form-config]");
+    var documento = document.getElementById("{{ config_form.documento.id_for_label }}");
+    var origem = document.getElementById("{{ config_form.uf_origem.id_for_label }}");
+    var destino = document.getElementById("{{ config_form.uf_destino.id_for_label }}");
+    var regime = document.getElementById("{{ config_form.regime.id_for_label }}");
+    var avisoNfce = dialogo.querySelector("[data-aviso-nfce]");
+    var iniciais = { documento: documento.value, origem: origem.value, destino: destino.value, regime: regime.value };
+
+    function nfce() {
+      var e = documento.value === "nfce";
+      if (e) destino.value = origem.value;
+      destino.disabled = e;  // vai pelo servidor igual à origem
+      avisoNfce.classList.toggle("hidden", !e);
+    }
+    documento.addEventListener("change", nfce);
+    origem.addEventListener("change", nfce);
+
+    document.querySelectorAll("[data-abrir-config]").forEach(function (b) {
+      b.addEventListener("click", function () {
+        form.action = b.dataset.url;
+        dialogo.querySelector("[data-titulo-config]").textContent = b.dataset.titulo;
+        documento.value = b.dataset.documento || iniciais.documento;
+        origem.value = b.dataset.ufOrigem || iniciais.origem;
+        destino.value = b.dataset.ufDestino || iniciais.destino;
+        regime.value = b.dataset.regime || iniciais.regime;
+        nfce();
+        dialogo.showModal();
+      });
+    });
+    dialogo.querySelector("[data-fechar-config]").addEventListener("click", function () { dialogo.close(); });
+  })();
+</script>
+{% endblock %}

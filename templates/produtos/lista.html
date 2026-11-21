@@ -1,0 +1,153 @@
+{% extends "base_app.html" %}
+{% load formatos %}
+{% block title %}Produtos · Nexum{% endblock %}
+{% block page_title %}Produtos{% endblock %}
+
+{% block page %}
+<div class="mb-4 flex flex-wrap items-center justify-end gap-2">
+  {% include "partials/botao_excluir_selecionados.html" with titulo="Excluir produtos selecionados?" %}
+  <a href="{% url 'produto_criar' %}" class="btn btn-novo">{% include "partials/icone_mais.html" %} Novo produto</a>
+</div>
+
+{# ---------- Filtros ---------- #}
+<form method="get" class="mb-4 rounded-xl border border-line bg-surface p-4">
+  <div class="grid grid-cols-1 items-end gap-3 md:grid-cols-12">
+    <div class="md:col-span-5">
+      <label for="filtro-produto" class="block text-xs font-medium text-ink-soft">Produto</label>
+      <div class="relative mt-1">
+        <span class="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-ink-soft">
+          {% include "partials/icone_busca.html" %}
+        </span>
+        <input type="search" id="filtro-produto" name="q" value="{{ q }}" placeholder="Descrição, código ou código de barras"
+               class="w-full rounded-lg border border-line bg-surface pl-9 pr-3 py-2 text-sm
+                      focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/30">
+      </div>
+    </div>
+    <div class="md:col-span-3">
+      <label for="filtro-grupo" class="block text-xs font-medium text-ink-soft">Grupo</label>
+      <select id="filtro-grupo" name="grupo" onchange="this.form.submit()"
+              data-atualizar-url="{% url 'cadastro_simples_lista' 'grupo' %}" data-atualizar-todos
+              class="mt-1 w-full rounded-lg border border-line bg-surface px-3 py-2 text-sm
+                     focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/30">
+        <option value="">Todos os grupos</option>
+        {% for g in grupos %}
+        <option value="{{ g.pk }}" {% if grupo_filtro == g.pk|stringformat:"s" %}selected{% endif %}>{{ g.nome }}{% if not g.ativo %} (desativado){% endif %}</option>
+        {% endfor %}
+      </select>
+    </div>
+    <div class="flex flex-wrap items-center gap-2 md:col-span-4 md:justify-end">
+      {% include "partials/filtro_situacao.html" with rotulo="Desativado" %}
+      {% include "partials/filtro_interruptor.html" with nome="combo" rotulo="Combo" marcado=so_combos %}
+    </div>
+  </div>
+  <div class="mt-3 flex items-center justify-end gap-2 border-t border-line pt-3">
+    {% if filtrando %}
+    <a href="{% url 'produto_lista' %}" class="btn btn-texto btn-sm">{% include "partials/icone_x.html" %} Limpar filtros</a>
+    {% endif %}
+    <button type="submit" class="btn btn-secundario btn-sm">{% include "partials/icone_busca.html" %} Pesquisar</button>
+  </div>
+</form>
+
+<form method="post" id="form-selecionados" action="{% url 'produto_excluir_selecionados' %}">
+{% csrf_token %}
+<div class="bg-surface border border-line rounded-xl overflow-hidden">
+  <div class="overflow-x-auto">
+    <table class="w-full text-sm">
+      <thead class="bg-page text-ink-soft text-left">
+        <tr>
+          <th class="w-12 px-0 py-3">
+            <div class="flex items-center justify-center">
+              <input type="checkbox" data-selecionar-todos aria-label="Selecionar todos"
+                     class="h-4 w-4 rounded border-line accent-primary cursor-pointer">
+            </div>
+          </th>
+          <th class="w-12 px-0 py-3"></th>
+          {% include "partials/th_ordenar.html" with campo="codigo" rotulo="Código" %}
+          {% include "partials/th_ordenar.html" with campo="descricao" rotulo="Descrição" %}
+          <th class="px-4 py-3 font-medium ">Grupo</th>
+          <th class="px-4 py-3 font-medium ">Unidade</th>
+          <th class="px-4 py-3 font-medium text-right">Estoque</th>
+          <th class="px-4 py-3 font-medium text-right">Preço de venda</th>
+          <th class="px-4 py-3 font-medium ">Situação</th>
+        </tr>
+      </thead>
+      <tbody class="divide-y divide-line">
+        {% for p in produtos %}
+        {% url 'produto_editar' p.pk as url_abrir %}
+        <tr class="hover:bg-primary-soft/60 transition-colors">
+          <td class="px-0 py-3">
+            <div class="flex items-center justify-center">
+              <input type="checkbox" name="selecionados" value="{{ p.pk }}" data-selecionar
+                     aria-label="Selecionar {{ p }}"
+                     class="h-4 w-4 rounded border-line accent-primary cursor-pointer">
+            </div>
+          </td>
+          <td class="px-0 py-3">
+            <div class="flex items-center justify-center">
+              <a href="{{ url_abrir }}" title="Editar" aria-label="Editar {{ p }}"
+                 class="inline-flex rounded-md p-1.5 text-ink-soft hover:text-primary-text hover:bg-primary-soft transition">
+                {% include "partials/icone_lapis.html" %}
+              </a>
+            </div>
+          </td>
+          {# Cada célula é um link para abrir o registro #}
+          <td class="p-0 tabular-nums text-ink-soft"><a href="{{ url_abrir }}" tabindex="-1" class="block px-4 py-3">{{ p.codigo }}</a></td>
+          <td class="p-0">
+            <a href="{{ url_abrir }}" tabindex="-1" class="block px-4 py-3">
+              <div class="font-medium">{{ p.descricao }}</div>
+              {% if p.codigo_interno or p.codigo_barras %}
+              <div class="text-xs text-ink-soft">
+                {% if p.codigo_interno %}Cód. interno {{ p.codigo_interno }}{% endif %}{% if p.codigo_interno and p.codigo_barras %} · {% endif %}{% if p.codigo_barras %}{{ p.codigo_barras }}{% endif %}
+              </div>
+              {% endif %}
+            </a>
+          </td>
+          <td class="p-0">
+            <a href="{{ url_abrir }}" tabindex="-1" class="block px-4 py-3">
+              {{ p.grupo }}{% if p.subgrupo %} <span class="text-ink-soft">› {{ p.subgrupo }}</span>{% endif %}
+            </a>
+          </td>
+          <td class="p-0"><a href="{{ url_abrir }}" tabindex="-1" class="block px-4 py-3">{{ p.unidade }}</a></td>
+          <td class="p-0 text-right tabular-nums whitespace-nowrap">
+            <a href="{{ url_abrir }}" tabindex="-1" class="block px-4 py-3">
+              {% if p.controlar_estoque %}
+              <span class="{% if p.saldo < 0 %}font-semibold text-danger{% elif p.minimo and p.saldo < p.minimo %}inline-flex items-center gap-1 font-semibold text-warning{% elif p.saldo == 0 %}text-ink-soft{% else %}font-medium{% endif %}"
+                    {% if p.minimo and p.saldo < p.minimo %}title="Abaixo do estoque mínimo ({{ p.minimo|quantidade }})"{% endif %}>
+                {% if p.minimo and p.saldo < p.minimo and p.saldo >= 0 %}<span class="h-1.5 w-1.5 rounded-full bg-warning"></span>{% endif %}{{ p.saldo|quantidade }}
+              </span>
+              {% else %}<span class="text-ink-soft" title="Não controla estoque">—</span>{% endif %}
+            </a>
+          </td>
+          <td class="p-0 text-right tabular-nums whitespace-nowrap">
+            <a href="{{ url_abrir }}" tabindex="-1" class="block px-4 py-3 font-medium">{{ p.preco_venda|moeda }}</a>
+          </td>
+          <td class="p-0">
+            <a href="{{ url_abrir }}" tabindex="-1" class="flex flex-wrap gap-1 px-4 py-3">
+              {% if p.ativo %}
+              <span class="rounded-full bg-success/15 text-success px-2.5 py-0.5 text-xs font-medium">Ativo</span>
+              {% else %}
+              <span class="rounded-full bg-ink-soft/15 text-ink-soft px-2.5 py-0.5 text-xs font-medium">Desativado</span>
+              {% endif %}
+              {% if not p.vender %}<span class="rounded-full bg-warning/15 text-warning px-2.5 py-0.5 text-xs font-medium">Não vende</span>{% endif %}
+            </a>
+          </td>
+        </tr>
+        {% empty %}
+        <tr>
+          <td colspan="9" class="px-4 py-10 text-center text-ink-soft">
+            {% if filtrando and not so_desativados or q %}Nenhum produto encontrado com esses filtros.
+            {% elif so_desativados %}Nenhum produto desativado.
+            {% else %}Nenhum produto ativo. Clique em <strong>Novo produto</strong> para cadastrar.{% endif %}
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+</form>
+
+{% include "partials/paginacao.html" %}
+
+<script>Nexum.selecao(); Nexum.excluirSelecionados();</script>
+{% endblock %}

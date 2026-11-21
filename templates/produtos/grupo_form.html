@@ -1,0 +1,101 @@
+{% extends "base_app.html" %}
+{% block title %}{{ titulo }} · Nexum{% endblock %}
+{% block page_title %}Grupos de produtos{% endblock %}
+
+{% block page %}
+<div class="max-w-5xl space-y-5">
+  <div class="flex flex-wrap items-center justify-between gap-3">
+    <nav class="text-sm text-ink-soft">
+      <a href="{% url 'produto_grupos' %}" class="hover:text-ink">Grupos</a>
+      <span class="mx-1">/</span>
+      <span class="text-ink font-medium">{{ titulo }}</span>
+    </nav>
+    <div class="flex flex-wrap items-center gap-2">
+      <a href="{% url 'produto_grupos' %}" class="btn btn-secundario">{% include "partials/icone_voltar.html" %} Voltar</a>
+      {% if object %}
+      <a href="{% url 'produto_grupo_criar' %}" class="btn btn-novo">{% include "partials/icone_mais.html" %} Novo cadastro</a>
+      <button type="submit" form="form-excluir-grupo" class="btn btn-perigo">{% include "partials/icone_lixeira.html" %} Excluir</button>
+      {% endif %}
+    </div>
+  </div>
+
+  <form method="post" class="bg-surface border border-line rounded-xl p-6 space-y-6" novalidate>
+    {% csrf_token %}
+    <div class="grid grid-cols-1 gap-4 sm:grid-cols-6">
+      <div class="sm:col-span-4">{% include "partials/campo.html" with campo=form.nome %}</div>
+      <div class="sm:col-span-2">{% include "partials/campo.html" with campo=form.comissao %}</div>
+    </div>
+    <div class="grid grid-cols-1 gap-5 sm:grid-cols-2">
+      {% include "partials/interruptor.html" with campo=form.vender %}
+      {% include "partials/interruptor.html" with campo=form.ativo %}
+      {% include "partials/interruptor.html" with campo=form.hortifruti %}
+      {% include "partials/interruptor.html" with campo=form.restricao_idade %}
+    </div>
+    <div class="flex items-center gap-4 border-t border-line pt-5">
+      <button type="submit" class="btn btn-primario">{% include "partials/icone_check.html" %} Salvar</button>
+      <a href="{% url 'produto_grupos' %}" class="btn btn-texto">Cancelar</a>
+    </div>
+  </form>
+
+  {# ---------- Subgrupos deste grupo ---------- #}
+  <section class="rounded-xl border border-line bg-surface">
+    <div class="flex flex-wrap items-center justify-between gap-3 border-b border-line px-6 py-4">
+      <div>
+        <h2 class="font-semibold">Subgrupos</h2>
+        <p class="text-xs text-ink-soft">Divisões dentro do grupo (ex.: Bebidas › Refrigerantes, Sucos).</p>
+      </div>
+      {% if object %}
+      {# A janela do "+" trabalha com um campo; aqui ela usa um campo escondido e a página recarrega ao fechar #}
+      <input type="hidden" id="grupo_atual" value="{{ object.pk }}">
+      <select id="subgrupos_alvo" hidden aria-hidden="true"></select>
+      <button type="button" data-gerenciar data-alvo="subgrupos_alvo" data-pai-campo="grupo_atual" data-pai-rotulo="o grupo"
+              data-titulo="Subgrupos de {{ object.nome }}" data-singular="subgrupo" data-artigo="o"
+              data-uso-curto="prod." data-uso-longo="produto(s)"
+              data-url-lista="{% url 'cadastro_simples_lista' 'subgrupo' %}"
+              data-url-criar="{% url 'cadastro_simples_criar' 'subgrupo' %}"
+              data-url-salvar="{% url 'cadastro_simples_salvar' 'subgrupo' 0 %}"
+              data-url-excluir="{% url 'cadastro_simples_excluir' 'subgrupo' 0 %}"
+              class="btn btn-novo">
+        {% include "partials/icone_mais.html" %} Gerenciar subgrupos
+      </button>
+      {% endif %}
+    </div>
+    <div class="px-6 py-5">
+      {% if not object %}
+      <p class="text-sm text-ink-soft">Salve o grupo primeiro. Depois você cadastra os subgrupos dele aqui.</p>
+      {% elif subgrupos %}
+      <ul class="flex flex-wrap gap-2">
+        {% for s in subgrupos %}
+        <li class="inline-flex items-center gap-2 rounded-full border border-line px-3 py-1.5 text-sm
+                   {% if not s.ativo %}bg-page text-ink-soft line-through decoration-ink-soft/40{% else %}bg-surface{% endif %}">
+          {{ s.nome }}
+          <span class="rounded-full bg-page px-1.5 text-[10px] text-ink-soft">{{ s.total }} prod.</span>
+        </li>
+        {% endfor %}
+      </ul>
+      {% else %}
+      <p class="text-sm text-ink-soft">Nenhum subgrupo. Clique em <strong>Gerenciar subgrupos</strong> para cadastrar.</p>
+      {% endif %}
+    </div>
+  </section>
+</div>
+
+{% if object %}
+<form method="post" action="{% url 'produto_grupo_excluir' object.pk %}" id="form-excluir-grupo" hidden
+      data-confirmar-titulo="Excluir grupo?"
+      data-confirmar="O grupo “{{ object }}” e os subgrupos dele serão excluídos."
+      {% if total_produtos %}data-confirmar-aviso="Este grupo tem {{ total_produtos }} produto(s): ele não será excluído. Desative-o."{% endif %}>
+  {% csrf_token %}
+</form>
+
+{% include "partials/gerenciador_cadastro.html" %}
+<script>
+  (function () {
+    Nexum.dialogos();
+    Nexum.gerenciador(document.querySelector("[name=csrfmiddlewaretoken]").value);
+    // Ao fechar a janela, a lista de subgrupos da página se atualiza
+    document.getElementById("gerenciador").addEventListener("close", function () { window.location.reload(); });
+  })();
+</script>
+{% endif %}
+{% endblock %}

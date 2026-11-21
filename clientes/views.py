@@ -11,24 +11,26 @@ from django.views.decorators.http import require_POST
 from django.views.generic import ListView
 
 from contas.permissions import administrador_requerido
-from core.listas import FiltroSituacaoMixin, OrdenacaoMixin
+from core.listas import FiltroSituacaoMixin, OrdenacaoMixin, excluir_selecionados
 from empresas.templatetags.formatos import moeda
 from empresas.validators import limpar_documento
 
 from .financeiro import extrato_credito, periodo_padrao, resumo_financeiro
-from .forms import ClienteForm, CreditoClienteForm, EnderecoClienteForm, LancarCreditoForm
-from .models import Cliente, MovimentoCredito
+from .forms import (
+    ClienteForm,
+    ContatoClienteForm,
+    CreditoClienteForm,
+    EnderecoClienteForm,
+    LancarCreditoForm,
+)
+from .models import Cliente, ContatoCliente, MovimentoCredito
 
 
 class ClienteListView(LoginRequiredMixin, FiltroSituacaoMixin, OrdenacaoMixin, ListView):
     paginate_by = 30
     template_name = "clientes/lista.html"
     context_object_name = "clientes"
-    ordenacoes = {
-        "nome": ["nome_fantasia", "razao_social"], "documento": "documento",
-        "cidade": "municipio__nome", "tipo": "tipo_cliente__nome",
-        "atendente": "atendente__nome", "situacao": ["ativo", "bloqueado"],
-    }
+    ordenacoes = {"codigo": "pk", "nome": ["nome_fantasia", "razao_social"]}  # só Código e nome têm seta
 
     def get_queryset(self):
         qs = self.filtrar_situacao(
@@ -65,7 +67,8 @@ def _dados_enderecos(cliente):
     ]
 
 
-def _pagina(request, cliente, form=None, endereco_form=None, endereco_acao=None):
+def _pagina(request, cliente, form=None, endereco_form=None, endereco_acao=None,
+            contato_form=None, contato_acao=None):
     """Desenha a tela do cliente (todas as abas)."""
     contexto = {
         "form": form or ClienteForm(
@@ -83,6 +86,14 @@ def _pagina(request, cliente, form=None, endereco_form=None, endereco_acao=None)
             endereco_acao=endereco_acao or reverse("cliente_endereco_novo", args=[cliente.pk]),
             abrir_endereco=endereco_form is not None,
             financeiro=resumo_financeiro(cliente),
+            contatos=cliente.contatos.all(),
+            contatos_dados=[
+                {"id": c.pk, "tipo": c.tipo, "nome": c.nome, "ddd": c.ddd, "telefone": c.telefone, "email": c.email}
+                for c in cliente.contatos.all()
+            ],
+            contato_form=contato_form or ContatoClienteForm(),
+            contato_acao=contato_acao or reverse("cliente_contato_novo", args=[cliente.pk]),
+            abrir_contato=contato_form is not None,
         )
     return render(request, "clientes/form.html", contexto)
 
@@ -103,7 +114,7 @@ def cliente_form(request, pk=None):
             form.instance.cadastrado_por = request.user
         cliente = form.save()
     messages.success(request, f"Cliente {cliente} {'cadastrado' if novo else 'atualizado'} com sucesso.")
-    return redirect("cliente_lista")
+    return redirect("cliente_editar", pk=cliente.pk)  # continua no cadastro
 
 
 # ---------- Aba "Outros endereços" ----------
@@ -130,6 +141,44 @@ def cliente_endereco_excluir(request, pk, endereco_pk):
     get_object_or_404(cliente.enderecos, pk=endereco_pk).delete()
     messages.success(request, "Endereço excluído.")
     return redirect(url_aba_enderecos(cliente))
+
+
+# ---------- Aba "Contatos" ----------
+
+def url_aba_contatos(cliente):
+    return reverse("cliente_editar", args=[cliente.pk]) + "#contatos"
+
+
+@login_required
+@require_POST
+def cliente_contato_salvar(request, pk, contato_pk=None):
+    cliente = get_object_or_404(Cliente, pk=pk)
+    contato = get_object_or_404(cliente.contatos, pk=contato_pk) if contato_pk else None
+    form = ContatoClienteForm(request.POST, instance=contato)
+    if not form.is_valid():
+        return _pagina(request, cliente, contato_form=form, contato_acao=request.path)
+    with transaction.atomic():
+        form.instance.cliente = cliente
+        contato = form.save()
+        mensagem = "Contato atualizado." if contato_pk else "Contato adicionado."
+        # Só um contato principal: o anterior passa para "Outros"
+        if contato.eh_principal:
+            anteriores = cliente.contatos.filter(tipo=ContatoCliente.Tipo.PRINCIPAL).exclude(pk=contato.pk)
+            nomes = list(anteriores.values_list("nome", flat=True))
+            if nomes:
+                anteriores.update(tipo=ContatoCliente.Tipo.OUTROS)
+                mensagem += f" Agora ele é o principal; {', '.join(nomes)} passou para Outros."
+    messages.success(request, mensagem)
+    return redirect(url_aba_contatos(cliente))
+
+
+@login_required
+@require_POST
+def cliente_contato_excluir(request, pk, contato_pk):
+    cliente = get_object_or_404(Cliente, pk=pk)
+    get_object_or_404(cliente.contatos, pk=contato_pk).delete()
+    messages.success(request, "Contato excluído.")
+    return redirect(url_aba_contatos(cliente))
 
 
 # ---------- Aba "Financeiro": janela "Gerenciar crédito" (só quem acessa as configurações) ----------
@@ -205,4 +254,11 @@ def cliente_excluir(request, pk):
         messages.error(request, f"{nome} já tem registros no sistema. Desative o cliente em vez de excluir.")
         return redirect("cliente_editar", pk=pk)
     messages.success(request, f"Cliente {nome} excluído.")
+    return redirect("cliente_lista")
+
+
+@login_required
+@require_POST
+def cliente_excluir_selecionados(request):
+    excluir_selecionados(request, Cliente.objects.all(), singular="cliente", plural="clientes")
     return redirect("cliente_lista")

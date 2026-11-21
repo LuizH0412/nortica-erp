@@ -36,6 +36,7 @@ SHARED_APPS = [
     "django_tenants",  # sempre o primeiro
     "instancias",
     "localidades",
+    "fiscal",       # tabelas oficiais (NCM...), iguais para todas as instâncias
     "django.contrib.contenttypes",
     "django.contrib.messages",
     "django.contrib.staticfiles",
@@ -49,6 +50,7 @@ TENANT_APPS = [
     "contas",       # usuários e permissões
     "funcionarios", # funcionários, funções e setores
     "clientes",     # clientes (compartilhados entre as empresas)
+    "produtos",     # produtos, grupos e vínculos fiscais (catálogo único)
     "django.contrib.auth",
     "django.contrib.contenttypes",
     "django.contrib.sessions",
@@ -157,6 +159,10 @@ TIME_ZONE = "America/Sao_Paulo"
 USE_TZ = True
 
 STATICFILES_DIRS = [BASE_DIR / "assets"]
+
+# Arquivos enviados pelos usuários (fotos dos produtos...). Cada instância tem a sua pasta.
+MEDIA_URL = "/media/"
+MEDIA_ROOT = BASE_DIR / "media"
 TAILWIND_CLI_SRC_CSS = BASE_DIR / "styles" / "source.css"
 
 LOGIN_URL = "login"
@@ -164,6 +170,10 @@ LOGIN_REDIRECT_URL = "home"
 LOGOUT_REDIRECT_URL = "login"
 
 DOMINIO_BASE = os.getenv("DOMINIO_BASE", "localhost")
+
+# Chave que criptografa os certificados digitais (arquivo e senha) guardados no banco.
+# Se mudar, os certificados já enviados não abrem mais e precisam ser enviados de novo.
+CHAVE_CERTIFICADOS = os.getenv("CHAVE_CERTIFICADOS", "")
 ALLOWED_HOSTS = [".localhost", "127.0.0.1", DOMINIO_BASE, f".{DOMINIO_BASE}"]
 
 # Usuário master criado em cada instância (o login é pelo e-mail)

@@ -1,0 +1,417 @@
+{% comment %}
+Formulário dos detalhes fiscais do produto numa empresa.
+Usado na página própria (produtos/fiscal.html) e embutido na aba "Detalhes fiscais" quando só há uma empresa.
+Contexto: object (produto), fiscal_form, fiscal_empresa; voltar="produto" quando está dentro da aba.
+
+Layout: à esquerda as etapas (classificação → tributação → produto específico); à direita um painel fixo
+com a carga tributária ("De olho no imposto"), a conferência do que falta e o Salvar.
+{% endcomment %}
+{% load formatos %}
+{% with f=fiscal_form %}
+<form method="post" action="{% url 'produto_fiscal' object.pk fiscal_empresa.pk %}" id="form-fiscal" novalidate
+      class="grid gap-6 lg:grid-cols-3">
+  {% csrf_token %}
+  {% if voltar %}<input type="hidden" name="voltar" value="{{ voltar }}">{% endif %}
+
+  <div class="space-y-5 lg:col-span-2">
+    {% if f.non_field_errors %}
+    <div class="rounded-lg border border-danger/20 bg-danger-soft p-3 text-sm text-danger" data-erro>{{ f.non_field_errors }}</div>
+    {% endif %}
+
+    {# ---------- 1. Classificação ---------- #}
+    <section class="rounded-xl border border-line bg-surface">
+      <header class="flex items-center gap-3 border-b border-line px-5 py-3">
+        <span class="flex h-7 w-7 items-center justify-center rounded-full bg-primary text-xs font-bold text-white">1</span>
+        <div>
+          <h3 class="text-sm font-semibold">Classificação</h3>
+          <p class="text-xs text-ink-soft">Comece pela NCM: ela define o CEST e a carga tributária.</p>
+        </div>
+      </header>
+      <div class="space-y-4 p-5">
+        <div>
+          <label for="{{ f.ncm.id_for_label }}" class="block text-sm font-medium">NCM</label>
+          <select name="{{ f.ncm.html_name }}" id="{{ f.ncm.id_for_label }}" class="{{ f.ncm.field.widget.attrs.class }}"
+                  data-atualizar-url="{% url 'ncm_busca' %}" data-atualizar-todos>
+            {% for valor, rotulo in f.ncm.field.widget.choices %}
+            <option value="{{ valor }}" {% if valor and valor == f.ncm.value|default:"" %}selected{% endif %}>{{ rotulo }}</option>
+            {% endfor %}
+          </select>
+          <p class="mt-1 text-xs text-ink-soft">Digite o código (com ou sem pontos) ou parte da descrição.</p>
+          {% for erro in f.ncm.errors %}<p class="mt-1 text-xs text-danger" data-erro>{{ erro }}</p>{% endfor %}
+        </div>
+
+        <div class="grid grid-cols-1 gap-4 md:grid-cols-5">
+          <div class="md:col-span-3">
+            <label for="{{ f.cest.id_for_label }}" class="flex items-center gap-2 text-sm font-medium">
+              CEST
+              <span class="rounded-full bg-page px-2 py-0.5 text-[10px] font-medium text-ink-soft">pela NCM</span>
+            </label>
+            <select name="{{ f.cest.html_name }}" id="{{ f.cest.id_for_label }}" class="{{ f.cest.field.widget.attrs.class }}"
+                    data-atualizar-url="{% url 'cest_busca' %}" data-atualizar-todos
+                    data-atualizar-pai="{{ f.ncm.id_for_label }}" data-atualizar-pai-rotulo="a NCM"
+                    data-vazio="Nenhum CEST para esta NCM.">
+              {% for valor, rotulo in f.cest.field.widget.choices %}
+              <option value="{{ valor }}" {% if valor and valor == f.cest.value|default:"" %}selected{% endif %}>{{ rotulo }}</option>
+              {% endfor %}
+            </select>
+            <p class="mt-1 text-xs text-ink-soft" data-cest-ajuda>Vem da NCM (Convênio ICMS 142/2018).</p>
+            {% for erro in f.cest.errors %}<p class="mt-1 text-xs text-danger" data-erro>{{ erro }}</p>{% endfor %}
+          </div>
+          <div class="md:col-span-2">{% include "partials/campo.html" with campo=f.origem %}</div>
+        </div>
+      </div>
+    </section>
+
+    {# ---------- 2. Tributação ---------- #}
+    <section class="rounded-xl border border-line bg-surface">
+      <header class="flex items-center gap-3 border-b border-line px-5 py-3">
+        <span class="flex h-7 w-7 items-center justify-center rounded-full bg-primary text-xs font-bold text-white">2</span>
+        <div>
+          <h3 class="text-sm font-semibold">Tributação</h3>
+          <p class="text-xs text-ink-soft">As regras de NF-e e NFC-e deste produto em {{ fiscal_empresa.unidade }}.</p>
+        </div>
+      </header>
+      <div class="space-y-4 p-5">
+        <div>
+          <div class="flex items-center justify-between gap-2">
+            <label for="{{ f.vinculo.id_for_label }}" class="block text-sm font-medium">Vínculo fiscal</label>
+            <a href="{% url 'produto_vinculos_fiscais' %}" target="_blank" rel="noopener"
+               class="inline-flex items-center gap-1 text-xs font-medium text-primary-text hover:underline"
+               title="Abre o cadastro de vínculos fiscais numa nova aba">
+              Gerenciar vínculos
+              <svg class="h-3.5 w-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 3h6v6M10 14 21 3M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/></svg>
+            </a>
+          </div>
+          <select name="{{ f.vinculo.html_name }}" id="{{ f.vinculo.id_for_label }}" class="{{ f.vinculo.field.widget.attrs.class }}"
+                  data-atualizar-url="{% url 'cadastro_simples_lista' 'vinculo_fiscal' %}">
+            {% for valor, rotulo in f.vinculo.field.choices %}
+            <option value="{{ valor }}" {% if valor|stringformat:"s" == f.vinculo.value|stringformat:"s" %}selected{% endif %}>{{ rotulo }}</option>
+            {% endfor %}
+          </select>
+          <p class="mt-1 text-xs text-ink-soft">CFOP, CST e alíquotas vêm do vínculo. Vazio, vale o vínculo da NCM ou o padrão.</p>
+          {% for erro in f.vinculo.errors %}<p class="mt-1 text-xs text-danger" data-erro>{{ erro }}</p>{% endfor %}
+        </div>
+        <div class="grid grid-cols-1 gap-4 md:grid-cols-2">
+          <div>{% include "partials/campo.html" with campo=f.codigo_beneficio %}</div>
+          <div>{% include "partials/campo.html" with campo=f.fcp %}</div>
+        </div>
+      </div>
+    </section>
+
+    {# ---------- 3. Produto específico ---------- #}
+    <section class="rounded-xl border border-line bg-surface">
+      <header class="flex items-center gap-3 border-b border-line px-5 py-3">
+        <span class="flex h-7 w-7 items-center justify-center rounded-full bg-primary text-xs font-bold text-white">3</span>
+        <div>
+          <h3 class="text-sm font-semibold">Produto específico</h3>
+          <p class="text-xs text-ink-soft">Só para combustíveis e para quem fatura em outra unidade (ex.: vende UN, tributa KG).</p>
+        </div>
+      </header>
+      <div class="flex flex-wrap items-center justify-between gap-3 p-5">
+        <div class="flex min-w-0 items-center gap-3">
+          <span class="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl {% if f.instance.especifico %}bg-warning/15 text-warning{% else %}bg-page text-ink-soft{% endif %}">
+            {% if f.instance.especifico == "combustivel" %}
+            <svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 22V4a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v18M3 22h12M15 13h2a2 2 0 0 1 2 2v3a2 2 0 0 0 4 0V9l-3-3M7 7h4"/></svg>
+            {% else %}
+            <svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 8 12 3 3 8v8l9 5 9-5Z"/><path d="m3 8 9 5 9-5M12 13v8"/></svg>
+            {% endif %}
+          </span>
+          <p class="min-w-0 text-sm" data-resumo-especifico>
+            {% if f.instance.especifico == "combustivel" %}
+              <span class="font-medium">Combustível</span>{% if f.instance.anp_codigo %}<span class="text-ink-soft"> · ANP {{ f.instance.anp_codigo }}{% if f.instance.anp_descricao %} – {{ f.instance.anp_descricao }}{% endif %}</span>{% endif %}
+            {% else %}<span class="font-medium">Produto comum</span>{% endif %}
+            {% if f.instance.unidade_tributavel_diferente %}<span class="block text-xs text-ink-soft">Tributa em {{ f.instance.unidade_tributavel }} (fator {{ f.instance.fator_conversao|floatformat:"-4" }})</span>{% endif %}
+          </p>
+        </div>
+        <button type="button" class="btn btn-secundario" data-abrir-especifico>
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 7h-9M14 17H5"/><circle cx="17" cy="17" r="3"/><circle cx="7" cy="7" r="3"/></svg>
+          Configurar
+        </button>
+        {% if f.erro_no_especifico %}<p class="w-full text-xs text-danger" data-erro>Há campos a corrigir em “Produto específico”.</p>{% endif %}
+      </div>
+    </section>
+  </div>
+
+  {# ---------- Painel: carga tributária, conferência e salvar ---------- #}
+  <aside class="h-fit space-y-4 lg:sticky lg:top-4">
+    <div class="rounded-xl border border-line bg-surface p-5" data-olho data-url="{% url 'produto_fiscal_olho' object.pk fiscal_empresa.pk %}"
+         title="Calculado pela tabela do IBPT (NCM, origem e UF da empresa). Não é digitado.">
+      <div class="flex items-center justify-between">
+        <h3 class="text-sm font-semibold">De olho no imposto</h3>
+        <span class="inline-flex items-center gap-1 rounded-full bg-page px-2 py-0.5 text-[10px] font-medium text-ink-soft">
+          <svg class="h-3 w-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg>
+          automático
+        </span>
+      </div>
+      <p class="mt-2 text-3xl font-semibold tracking-tight">
+        <span data-olho-total>{% if f.instance.olho_fonte %}{{ f.instance.olho_no_imposto|floatformat:2 }}{% else %}—{% endif %}</span><span class="text-lg text-ink-soft">%</span>
+      </p>
+      <div class="mt-3 flex h-2 overflow-hidden rounded-full bg-page" data-olho-barra aria-hidden="true">
+        <span class="bg-primary transition-all" data-parte="federal" style="width: {{ f.instance.olho_federal|stringformat:'s' }}%"></span>
+        <span class="bg-warning transition-all" data-parte="estadual" style="width: {{ f.instance.olho_estadual|stringformat:'s' }}%"></span>
+        <span class="bg-success transition-all" data-parte="municipal" style="width: {{ f.instance.olho_municipal|stringformat:'s' }}%"></span>
+      </div>
+      <p class="mt-3 text-xs text-ink-soft" data-olho-detalhe>
+        {% if f.instance.olho_fonte %}Federal {{ f.instance.olho_federal|floatformat:2 }}% · Estadual {{ f.instance.olho_estadual|floatformat:2 }}% · Municipal {{ f.instance.olho_municipal|floatformat:2 }}% ({{ f.instance.olho_fonte }})
+        {% else %}Preenchido sozinho pela NCM (tabela do IBPT).{% endif %}
+      </p>
+    </div>
+
+    <div class="rounded-xl border border-line bg-surface p-5">
+      <h3 class="text-sm font-semibold">Conferência</h3>
+      <ul class="mt-3 space-y-2.5 text-sm" data-conferencia data-total-cests="{{ f.total_cests }}" data-vinculo-auto="{{ f.vinculo_automatico }}">
+        <li class="flex items-start gap-2" data-item="ncm"><span data-icone></span><span><span class="font-medium">NCM</span> <span class="block text-xs text-ink-soft" data-texto></span></span></li>
+        <li class="flex items-start gap-2" data-item="cest"><span data-icone></span><span><span class="font-medium">CEST</span> <span class="block text-xs text-ink-soft" data-texto></span></span></li>
+        <li class="flex items-start gap-2" data-item="vinculo"><span data-icone></span><span><span class="font-medium">Vínculo fiscal</span> <span class="block text-xs text-ink-soft" data-texto></span></span></li>
+      </ul>
+    </div>
+
+    <div class="space-y-2">
+      <button type="submit" class="btn btn-primario w-full">{% include "partials/icone_check.html" %} Salvar</button>
+      {% if f.instance.pk %}<p class="text-center text-xs text-ink-soft">Atualizado {{ f.instance.atualizado_em|ha_quanto }}</p>{% endif %}
+    </div>
+  </aside>
+
+  {# ---------- Painel lateral "Produto específico" (os campos fazem parte deste formulário) ---------- #}
+  <dialog id="dialogo-especifico" aria-labelledby="especifico-titulo" {% if f.erro_no_especifico %}data-abrir-ao-carregar{% endif %}
+          class="painel-lateral my-0 ml-auto mr-0 h-dvh max-h-dvh w-full max-w-3xl border-l border-line bg-surface p-0 text-ink shadow-2xl backdrop:bg-black/40">
+    <div class="flex h-full flex-col">
+      <div class="flex items-start justify-between gap-4 border-b border-line px-6 py-4">
+        <div>
+          <h2 id="especifico-titulo" class="text-lg font-semibold">Produto específico</h2>
+          <p class="text-xs text-ink-soft">{{ object }} · {{ fiscal_empresa.unidade }}</p>
+        </div>
+        <button type="button" data-fechar-dialogo class="rounded-md p-1.5 text-ink-soft hover:bg-page" aria-label="Fechar">
+          {% include "partials/icone_x.html" %}
+        </button>
+      </div>
+
+      <div class="flex-1 space-y-6 overflow-y-auto px-6 py-5">
+        {# Tipo em cartões #}
+        <div>
+          <span class="block text-sm font-medium">Tipo</span>
+          <div class="mt-2 grid grid-cols-2 gap-3" role="radiogroup" aria-label="Tipo de produto específico">
+            {% for valor, rotulo in f.especifico.field.choices %}
+            <label class="flex cursor-pointer items-center gap-3 rounded-xl border border-line p-3 transition hover:bg-page
+                          has-checked:border-primary/50 has-checked:bg-primary-soft/60">
+              <input type="radio" name="{{ f.especifico.html_name }}" value="{{ valor }}" class="sr-only" data-tipo-especifico
+                     {% if f.especifico.value|default:"" == valor %}checked{% endif %}>
+              <span class="flex h-9 w-9 items-center justify-center rounded-lg bg-page text-ink-soft">
+                {% if valor == "combustivel" %}
+                <svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 22V4a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v18M3 22h12M15 13h2a2 2 0 0 1 2 2v3a2 2 0 0 0 4 0V9l-3-3M7 7h4"/></svg>
+                {% else %}
+                <svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 8 12 3 3 8v8l9 5 9-5Z"/><path d="m3 8 9 5 9-5M12 13v8"/></svg>
+                {% endif %}
+              </span>
+              <span class="text-sm font-medium">{% if valor %}{{ rotulo }}{% else %}Produto comum{% endif %}</span>
+            </label>
+            {% endfor %}
+          </div>
+        </div>
+
+        <div data-bloco-combustivel class="space-y-6">
+          <fieldset class="rounded-xl border border-line p-4">
+            <legend class="px-2 text-sm font-semibold text-ink-soft">Combustível (ANP)</legend>
+            <div class="grid grid-cols-1 gap-4 md:grid-cols-3">
+              <div>{% include "partials/campo.html" with campo=f.anp_codigo %}</div>
+              <div class="md:col-span-2">{% include "partials/campo.html" with campo=f.anp_descricao %}</div>
+              <div>{% include "partials/campo.html" with campo=f.glp_percentual %}</div>
+              <div>{% include "partials/campo.html" with campo=f.gas_natural_nacional %}</div>
+              <div>{% include "partials/campo.html" with campo=f.gas_natural_importado %}</div>
+              <div>{% include "partials/campo.html" with campo=f.valor_partida %}</div>
+              <div>{% include "partials/campo.html" with campo=f.codif %}</div>
+              <div>{% include "partials/campo.html" with campo=f.quantidade_combustivel %}</div>
+              <div>{% include "partials/campo.html" with campo=f.uf_consumo %}</div>
+            </div>
+          </fieldset>
+
+          <fieldset class="rounded-xl border border-line p-4">
+            <legend class="px-2 text-sm font-semibold text-ink-soft">CIDE</legend>
+            <div class="grid grid-cols-1 gap-4 md:grid-cols-3">
+              <div>{% include "partials/campo.html" with campo=f.cide_base %}</div>
+              <div>{% include "partials/campo.html" with campo=f.cide_aliquota %}</div>
+              <div>{% include "partials/campo.html" with campo=f.cide_valor %}</div>
+            </div>
+          </fieldset>
+
+          <fieldset class="rounded-xl border border-line p-4">
+            <legend class="px-2 text-sm font-semibold text-ink-soft">Tributação monofásica</legend>
+            <div class="grid grid-cols-1 gap-4 md:grid-cols-3">
+              <div>{% include "partials/campo.html" with campo=f.adrem_icms %}</div>
+              <div>{% include "partials/campo.html" with campo=f.adrem_retencao %}</div>
+              <div>{% include "partials/campo.html" with campo=f.adrem_anterior %}</div>
+              <div>{% include "partials/campo.html" with campo=f.reducao_adrem %}</div>
+              <div>{% include "partials/campo.html" with campo=f.motivo_reducao_adrem %}</div>
+              <div>{% include "partials/campo.html" with campo=f.biodiesel_percentual %}</div>
+            </div>
+          </fieldset>
+        </div>
+
+        <fieldset class="rounded-xl border border-line p-4">
+          <legend class="px-2 text-sm font-semibold text-ink-soft">Unidade tributável</legend>
+          {% include "partials/interruptor.html" with campo=f.unidade_tributavel_diferente %}
+          <div class="mt-4 grid grid-cols-1 gap-4 md:grid-cols-3" data-bloco-unidade-tributavel>
+            <div>
+              <label for="{{ f.unidade_tributavel.id_for_label }}" class="block text-sm font-medium"><span class="text-danger">*</span>Unidade tributável</label>
+              <select name="{{ f.unidade_tributavel.html_name }}" id="{{ f.unidade_tributavel.id_for_label }}"
+                      class="{{ f.unidade_tributavel.field.widget.attrs.class }}"
+                      data-atualizar-url="{% url 'cadastro_simples_lista' 'unidade' %}">
+                {% for valor, rotulo in f.unidade_tributavel.field.choices %}
+                <option value="{{ valor }}" {% if valor|stringformat:"s" == f.unidade_tributavel.value|stringformat:"s" %}selected{% endif %}>{{ rotulo }}</option>
+                {% endfor %}
+              </select>
+              {% for erro in f.unidade_tributavel.errors %}<p class="mt-1 text-xs text-danger" data-erro>{{ erro }}</p>{% endfor %}
+            </div>
+            <div>{% include "partials/campo.html" with campo=f.fator_conversao %}</div>
+            <div>
+              <span class="block text-sm font-medium">Valor unitário tributável</span>
+              <div class="mt-1 rounded-lg border border-line bg-page px-3 py-2 text-sm" data-valor-tributavel
+                   data-preco="{{ object.preco_venda|stringformat:'s' }}" data-unidade="{{ object.unidade }}">—</div>
+              <p class="mt-1 text-xs text-ink-soft">Estimado: preço de venda ({{ object.preco_venda|moeda }}) ÷ fator.</p>
+            </div>
+          </div>
+        </fieldset>
+      </div>
+
+      <div class="flex items-center justify-end gap-3 border-t border-line bg-page/60 px-6 py-4">
+        <button type="button" data-fechar-dialogo class="btn btn-texto">Fechar</button>
+        <button type="submit" class="btn btn-primario">{% include "partials/icone_check.html" %} Salvar</button>
+      </div>
+    </div>
+  </dialog>
+</form>
+
+<script>
+  (function () {
+    var form = document.getElementById("form-fiscal");
+    var tipos = form.querySelectorAll("[data-tipo-especifico]");
+    var combustivel = form.querySelector("[data-bloco-combustivel]");
+    var diferente = document.getElementById("{{ f.unidade_tributavel_diferente.id_for_label }}");
+    var blocoUnidade = form.querySelector("[data-bloco-unidade-tributavel]");
+    var fator = document.getElementById("{{ f.fator_conversao.id_for_label }}");
+    var estimado = form.querySelector("[data-valor-tributavel]");
+
+    function numero(v) {
+      v = (v || "").trim();
+      if (v.indexOf(",") >= 0) v = v.replace(/\./g, "").replace(",", ".");
+      return parseFloat(v) || 0;
+    }
+    function tipoAtual() {
+      var marcado = form.querySelector("[data-tipo-especifico]:checked");
+      return marcado ? marcado.value : "";
+    }
+    function atualizar() {
+      combustivel.classList.toggle("hidden", tipoAtual() !== "combustivel");
+      var liga = diferente.checked;
+      blocoUnidade.classList.toggle("opacity-50", !liga);
+      blocoUnidade.querySelectorAll("input, select").forEach(function (c) { c.disabled = !liga; });
+      var f = numero(fator.value), preco = parseFloat(estimado.dataset.preco) || 0;
+      estimado.textContent = liga && f > 0 ? "R$ " + (preco / f).toFixed(4).replace(".", ",") : "—";
+    }
+    tipos.forEach(function (t) { t.addEventListener("change", atualizar); });
+    diferente.addEventListener("change", atualizar);
+    fator.addEventListener("input", atualizar);
+    atualizar();
+
+    // ---------- Conferência (o que está ok e o que falta) ----------
+    var ncm = document.getElementById("{{ f.ncm.id_for_label }}");
+    var cest = document.getElementById("{{ f.cest.id_for_label }}");
+    var vinculo = document.getElementById("{{ f.vinculo.id_for_label }}");
+    var conferencia = form.querySelector("[data-conferencia]");
+    var ICONES = {
+      ok: '<svg class="mt-0.5 h-4 w-4 text-success" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="m8 12 3 3 5-6"/></svg>',
+      falta: '<svg class="mt-0.5 h-4 w-4 text-warning" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 8v4M12 16h.01"/></svg>',
+      neutro: '<svg class="mt-0.5 h-4 w-4 text-ink-soft" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M8 12h8"/></svg>'
+    };
+    function item(nome, estado, texto) {
+      var li = conferencia.querySelector('[data-item="' + nome + '"]');
+      li.querySelector("[data-icone]").innerHTML = ICONES[estado];
+      li.querySelector("[data-texto]").textContent = texto;
+    }
+    function rotulo(select) {
+      var o = select.options[select.selectedIndex];
+      return o && o.value ? o.textContent.trim() : "";
+    }
+    function conferir() {
+      var totalCests = parseInt(conferencia.dataset.totalCests, 10) || 0;
+      item("ncm", ncm.value ? "ok" : "falta", ncm.value ? rotulo(ncm) : "Escolha a NCM do produto.");
+      if (cest.value) item("cest", "ok", rotulo(cest));
+      else if (!ncm.value) item("cest", "neutro", "Depende da NCM.");
+      else if (!totalCests) item("cest", "neutro", "Não se aplica a esta NCM.");
+      else item("cest", "falta", totalCests + " possíve" + (totalCests > 1 ? "is" : "l") + " para esta NCM: escolha o do produto.");
+      var automatico = conferencia.dataset.vinculoAuto;
+      if (vinculo.value) item("vinculo", "ok", rotulo(vinculo));
+      else if (automatico) item("vinculo", "neutro", "Vazio: vale " + automatico + ".");
+      else item("vinculo", "falta", "Sem vínculo: necessário para emitir NF-e/NFC-e.");
+    }
+    [ncm, cest, vinculo].forEach(function (s) { s.addEventListener("change", conferir); });
+    conferir();
+
+    // ---------- NCM escolhida: busca o CEST e o "De olho no imposto" ----------
+    var origem = document.getElementById("{{ f.origem.id_for_label }}");
+    var cestAjuda = form.querySelector("[data-cest-ajuda]");
+    var olho = form.querySelector("[data-olho]");
+    var olhoTotal = olho.querySelector("[data-olho-total]"), olhoDetalhe = olho.querySelector("[data-olho-detalhe]");
+
+    function escolherCest(valor, nome) {
+      if (valor && !Array.prototype.some.call(cest.options, function (o) { return o.value === valor; })) {
+        cest.add(new Option(nome, valor));
+      }
+      cest.value = valor;
+      cest.dispatchEvent(new Event("change", { bubbles: true }));
+    }
+    function buscarCest() {
+      if (!ncm.value) {
+        conferencia.dataset.totalCests = "0";
+        escolherCest("", ""); cestAjuda.textContent = "Vem da NCM (Convênio ICMS 142/2018)."; return;
+      }
+      fetch(cest.dataset.atualizarUrl + "?pai=" + encodeURIComponent(ncm.value))
+        .then(function (r) { return r.json(); })
+        .then(function (r) {
+          var ids = r.itens.map(function (i) { return String(i.id); });
+          conferencia.dataset.totalCests = String(r.itens.length);
+          if (r.itens.length === 1) escolherCest(String(r.itens[0].id), r.itens[0].nome);  // um só: já preenche
+          else if (ids.indexOf(cest.value) < 0) escolherCest("", "");                     // o antigo não é desta NCM
+          cestAjuda.textContent = !r.itens.length ? "Nenhum CEST para esta NCM."
+            : r.itens.length === 1 ? "Preenchido pela NCM." : r.itens.length + " CESTs possíveis para esta NCM: escolha o do produto.";
+          conferir();
+        })
+        .catch(function () {});
+    }
+    function barra(partes) {
+      ["federal", "estadual", "municipal"].forEach(function (p) {
+        olho.querySelector('[data-parte="' + p + '"]').style.width = (partes ? partes[p] : 0) + "%";
+      });
+    }
+    function buscarOlho() {
+      olhoTotal.textContent = "…";
+      fetch(olho.dataset.url + "?ncm=" + encodeURIComponent(ncm.value) + "&origem=" + encodeURIComponent(origem.value))
+        .then(function (r) { return r.json(); })
+        .then(function (r) {
+          olhoTotal.textContent = r.ok ? r.total : "—";
+          olhoDetalhe.textContent = r.ok ? r.detalhe + " (" + r.fonte + ")" : r.mensagem;
+          barra(r.ok ? r.partes : null);
+        })
+        .catch(function () { olhoTotal.textContent = "—"; olhoDetalhe.textContent = "Não foi possível consultar agora."; barra(null); });
+    }
+    var ncmAnterior = ncm.value;
+    ncm.addEventListener("change", function () {
+      if (ncm.value === ncmAnterior) return;
+      ncmAnterior = ncm.value;
+      buscarCest();
+      buscarOlho();
+    });
+    origem.addEventListener("change", function () { if (ncm.value) buscarOlho(); });
+
+    Nexum.mascaras();
+    form.querySelectorAll("[data-abrir-especifico]").forEach(function (b) {
+      b.addEventListener("click", function () { document.getElementById("dialogo-especifico").showModal(); });
+    });
+    form.querySelectorAll("[data-fechar-dialogo]").forEach(function (b) {
+      b.addEventListener("click", function () { b.closest("dialog").close(); });
+    });
+    var dialogo = document.getElementById("dialogo-especifico");
+    if (dialogo.hasAttribute("data-abrir-ao-carregar")) dialogo.showModal();
+  })();
+</script>
+{% endwith %}

@@ -11,3 +11,6 @@ assets/css/tailwind.css
 
 # Binário do Tailwind baixado pelo django-tailwind-cli
 .django_tailwind_cli/
+
+# Arquivos enviados pelos usuários (fotos dos produtos...)
+media/

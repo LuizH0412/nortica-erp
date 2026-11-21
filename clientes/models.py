@@ -202,3 +202,42 @@ class MovimentoCredito(models.Model):
     @property
     def valor_com_sinal(self):
         return self.valor if self.tipo == self.Tipo.CREDITO else -self.valor
+
+
+class ContatoCliente(models.Model):
+    """Contatos do cliente (aba "Contatos"). Só um pode ser o principal."""
+
+    class Tipo(models.TextChoices):
+        PRINCIPAL = "principal", "Principal"
+        OUTROS = "outros", "Outros"
+
+    cliente = models.ForeignKey(Cliente, on_delete=models.CASCADE, related_name="contatos")
+    tipo = models.CharField("Tipo", max_length=10, choices=Tipo.choices, default=Tipo.PRINCIPAL)
+    nome = models.CharField("Contato", max_length=100, help_text="Nome da pessoa ou do setor.")
+    ddd = models.CharField("DDD", max_length=2)
+    telefone = models.CharField("Telefone", max_length=9)
+    email = models.EmailField("E-mail", blank=True)
+
+    criado_em = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        # O principal sempre primeiro; depois por nome
+        ordering = [
+            models.Case(models.When(tipo="principal", then=models.Value(0)), default=models.Value(1)),
+            "nome",
+        ]
+        verbose_name = "contato do cliente"
+        verbose_name_plural = "contatos do cliente"
+
+    def __str__(self):
+        return f"{self.nome} ({self.telefone_formatado})"
+
+    @property
+    def telefone_formatado(self):
+        t = self.telefone
+        numero = f"{t[:-4]}-{t[-4:]}" if len(t) >= 8 else t
+        return f"({self.ddd}) {numero}"
+
+    @property
+    def eh_principal(self):
+        return self.tipo == self.Tipo.PRINCIPAL

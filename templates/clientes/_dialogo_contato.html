@@ -1,0 +1,39 @@
+{# Janela "Adicione um contato" (aba Contatos). Campos com prefixo "con". #}
+{% with f=contato_form %}
+<dialog id="dialogo-contato" aria-labelledby="contato-titulo"
+        class="dialogo-animado m-auto w-[calc(100%-2rem)] max-w-xl rounded-2xl border border-line bg-surface p-0 text-ink shadow-2xl backdrop:bg-black/40">
+  <div class="flex items-start justify-between border-b border-line px-6 py-4">
+    <div>
+      <h2 id="contato-titulo" class="text-lg font-semibold">Adicione um contato</h2>
+      <p class="text-xs text-ink-soft">Preencha o formulário e clique em Salvar.</p>
+    </div>
+    <button type="button" data-fechar-dialogo title="Fechar" aria-label="Fechar"
+            class="-mr-2 inline-flex h-9 w-9 items-center justify-center rounded-full text-ink-soft transition
+                   hover:rotate-90 hover:bg-danger-soft hover:text-danger focus-visible:outline-none
+                   focus-visible:ring-2 focus-visible:ring-primary/40 [&_svg]:h-5 [&_svg]:w-5">
+      {% include "partials/icone_x.html" %}
+    </button>
+  </div>
+
+  <form method="post" id="form-contato" action="{{ contato_acao }}" novalidate>
+    {% csrf_token %}
+    <div class="space-y-4 px-6 py-5">
+      {% if f.non_field_errors %}<div class="rounded-lg bg-danger-soft text-danger text-sm p-3">{{ f.non_field_errors }}</div>{% endif %}
+      <div class="grid grid-cols-1 gap-4 sm:grid-cols-6">
+        <div class="sm:col-span-2">{% include "partials/campo.html" with campo=f.tipo %}</div>
+        <div class="sm:col-span-4">{% include "partials/campo.html" with campo=f.nome %}</div>
+        <div class="sm:col-span-1">{% include "partials/campo.html" with campo=f.ddd %}</div>
+        <div class="sm:col-span-5">{% include "partials/campo.html" with campo=f.telefone %}</div>
+        <div class="sm:col-span-6">{% include "partials/campo.html" with campo=f.email %}</div>
+      </div>
+      <p data-aviso-principal class="hidden rounded-lg bg-primary-soft px-3 py-2 text-xs text-primary-text">
+        Ao salvar como Principal, o contato principal atual passa para Outros.
+      </p>
+    </div>
+    <div class="flex items-center justify-end gap-3 rounded-b-2xl border-t border-line bg-page/60 px-6 py-4">
+      <button type="button" data-fechar-dialogo class="btn btn-texto">Cancelar</button>
+      <button type="submit" class="btn btn-primario">{% include "partials/icone_check.html" %} Salvar</button>
+    </div>
+  </form>
+</dialog>
+{% endwith %}

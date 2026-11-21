@@ -32,8 +32,9 @@ class ClienteTestCase(InstanciaTestCase):
 class CadastroTests(ClienteTestCase):
     def test_usuario_comum_cadastra_cliente(self):
         resposta = self.cadastrar()
-        self.assertRedirects(resposta, reverse("cliente_lista"), fetch_redirect_response=False)
         c = Cliente.objects.get()
+        # Salvar continua no cadastro (não volta para a lista)
+        self.assertRedirects(resposta, reverse("cliente_editar", args=[c.pk]), fetch_redirect_response=False)
         self.assertEqual(c.documento, "11222333000181")
         self.assertEqual(c.cadastrado_por, self.usuario)
 
@@ -251,15 +252,21 @@ class FinanceiroTests(ClienteTestCase):
         self.assertNotContains(resposta, 'id="dialogo-credito"')
         r = self.client.post(reverse("cliente_credito", args=[self.cliente.pk]), {"credito-limite_credito": "999"})
         self.assertEqual(r.status_code, 403)
+        for nome in ("cliente_credito_painel", "cliente_credito_lancar"):
+            with self.subTest(nome):
+                metodo = self.client.get if nome.endswith("painel") else self.client.post
+                self.assertEqual(metodo(reverse(nome, args=[self.cliente.pk])).status_code, 403)
 
     def test_administrador_altera_limite_e_bloqueio(self):
         admin = self.criar_usuario(nivel=ADMIN, empresas=[self.empresa])
         self.client.force_login(admin)
         self.assertContains(self.client.get(reverse("cliente_editar", args=[self.cliente.pk])), 'id="dialogo-credito"')
-        self.client.post(
+        resposta = self.client.post(
             reverse("cliente_credito", args=[self.cliente.pk]),
             {"credito-limite_credito": "2.500,50", "credito-bloqueado": "on"},
         )
+        self.assertEqual(resposta["HX-Trigger"], "credito-alterado")
+        self.assertContains(resposta, "Limite de crédito atualizado.")
         self.cliente.refresh_from_db()
         self.assertEqual(str(self.cliente.limite_credito), "2500.50")
         self.assertTrue(self.cliente.bloqueado)
@@ -270,3 +277,135 @@ class FinanceiroTests(ClienteTestCase):
         self.assertEqual(moeda(1234.5), "R$ 1.234,50")
         self.assertEqual(moeda(0), "R$ 0,00")
         self.assertEqual(moeda(-10), "-R$ 10,00")
+
+
+class GerenciarCreditoTests(ClienteTestCase):
+    def setUp(self):
+        super().setUp()
+        self.cadastrar()
+        self.cliente = Cliente.objects.get()
+        self.client.force_login(self.criar_usuario(nivel=ADMIN, empresas=[self.empresa]))
+
+    def lancar(self, valor, pedido=""):
+        return self.client.post(
+            reverse("cliente_credito_lancar", args=[self.cliente.pk]),
+            {"lancar-valor": valor, "lancar-pedido": pedido},
+        )
+
+    def test_lanca_credito_e_soma_no_saldo(self):
+        from decimal import Decimal
+        from .financeiro import saldo_credito
+        from .models import MovimentoCredito
+        resposta = self.lancar("10,00", pedido="123")
+        self.assertEqual(resposta["HX-Trigger"], "credito-alterado")
+        self.assertContains(resposta, "Crédito de R$ 10,00 lançado.")
+        self.lancar("1.000,50")
+        self.assertEqual(saldo_credito(self.cliente), Decimal("1010.50"))
+        m = self.cliente.movimentos_credito.get(pedido="123")
+        self.assertEqual(m.tipo, "C")
+        self.assertIsNotNone(m.usuario)  # registra quem lançou
+        # Débito (uso numa venda, no futuro) desconta do saldo
+        MovimentoCredito.objects.create(cliente=self.cliente, tipo="D", valor=Decimal("0.50"))
+        self.assertEqual(saldo_credito(self.cliente), Decimal("1010.00"))
+
+    def test_valor_obrigatorio_e_positivo(self):
+        for valor in ("", "0", "-5"):
+            with self.subTest(valor=valor):
+                resposta = self.lancar(valor)
+                self.assertFalse(resposta.has_header("HX-Trigger"))
+                self.assertTrue(resposta.context["lancar_form"].errors)
+        self.assertFalse(self.cliente.movimentos_credito.exists())
+
+    def test_painel_mostra_extrato_do_periodo(self):
+        from datetime import timedelta
+        from django.utils import timezone
+        from .models import MovimentoCredito
+        self.lancar("25,00")
+        antigo = MovimentoCredito.objects.create(cliente=self.cliente, tipo="C", valor=5, descricao="Antigo")
+        MovimentoCredito.objects.filter(pk=antigo.pk).update(criado_em=timezone.now() - timedelta(days=90))
+
+        resposta = self.client.get(reverse("cliente_credito_painel", args=[self.cliente.pk]))
+        extrato = resposta.context["extrato"]
+        self.assertEqual(len(extrato.movimentos), 1)  # só o do mês atual
+        self.assertEqual(str(extrato.saldo), "25.00")
+        self.assertContains(resposta, "Crédito do cliente")
+        self.assertContains(resposta, "R$ 30,00")  # saldo total (indicador) inclui o antigo
+
+        hoje = timezone.localdate()
+        resposta = self.client.get(
+            reverse("cliente_credito_painel", args=[self.cliente.pk]),
+            {"de": (hoje - timedelta(days=120)).isoformat(), "ate": hoje.isoformat()},
+        )
+        self.assertEqual(len(resposta.context["extrato"].movimentos), 2)
+
+    def test_aba_financeiro_mostra_o_saldo_de_credito(self):
+        self.lancar("40,00")
+        resposta = self.client.get(reverse("cliente_editar", args=[self.cliente.pk]))
+        self.assertEqual(str(resposta.context["financeiro"].saldo_credito_loja), "40.00")
+
+
+class ContatosTests(ClienteTestCase):
+    def setUp(self):
+        super().setUp()
+        self.cadastrar()
+        self.cliente = Cliente.objects.get()
+
+    def contato(self, **extra):
+        dados = {"con-tipo": "principal", "con-nome": "Maria", "con-ddd": "65", "con-telefone": "99681-5377", "con-email": ""}
+        dados.update(extra)
+        return self.client.post(reverse("cliente_contato_novo", args=[self.cliente.pk]), dados)
+
+    def test_adiciona_e_volta_na_aba(self):
+        resposta = self.contato(**{"con-email": "maria@loja.com"})
+        self.assertRedirects(
+            resposta, reverse("cliente_editar", args=[self.cliente.pk]) + "#contatos", fetch_redirect_response=False
+        )
+        c = self.cliente.contatos.get()
+        self.assertEqual((c.ddd, c.telefone, c.telefone_formatado), ("65", "996815377", "(65) 99681-5377"))
+
+    def test_valida_ddd_e_telefone(self):
+        resposta = self.contato(**{"con-ddd": "6", "con-telefone": "1234"})
+        form = resposta.context["contato_form"]
+        self.assertEqual(form.errors["ddd"], ["DDD inválido."])
+        self.assertIn("telefone", form.errors)
+        self.assertTrue(resposta.context["abrir_contato"])
+        self.assertFalse(self.cliente.contatos.exists())
+
+    def test_campos_obrigatorios(self):
+        form = self.contato(**{"con-nome": "", "con-ddd": "", "con-telefone": ""}).context["contato_form"]
+        self.assertEqual(set(form.errors), {"nome", "ddd", "telefone"})
+
+    def test_so_um_principal(self):
+        self.contato(**{"con-nome": "Maria"})
+        resposta = self.client.post(
+            reverse("cliente_contato_novo", args=[self.cliente.pk]),
+            {"con-tipo": "principal", "con-nome": "João", "con-ddd": "65", "con-telefone": "3333-4444"}, follow=True,
+        )
+        self.assertContains(resposta, "Maria passou para Outros")
+        tipos = dict(self.cliente.contatos.values_list("nome", "tipo"))
+        self.assertEqual(tipos, {"Maria": "outros", "João": "principal"})
+
+    def test_edita_e_exclui(self):
+        self.contato()
+        c = self.cliente.contatos.get()
+        self.client.post(
+            reverse("cliente_contato_editar", args=[self.cliente.pk, c.pk]),
+            {"con-tipo": "outros", "con-nome": "Maria Souza", "con-ddd": "65", "con-telefone": "3333-4444"},
+        )
+        c.refresh_from_db()
+        self.assertEqual((c.nome, c.tipo, c.telefone), ("Maria Souza", "outros", "33334444"))
+        self.client.post(reverse("cliente_contato_excluir", args=[self.cliente.pk, c.pk]))
+        self.assertFalse(self.cliente.contatos.exists())
+
+    def test_aba_lista_e_tem_a_janela(self):
+        self.contato(**{"con-email": "maria@loja.com"})
+        resposta = self.client.get(reverse("cliente_editar", args=[self.cliente.pk]))
+        self.assertContains(resposta, 'id="dialogo-contato"')
+        self.assertContains(resposta, "(65) 99681-5377")
+        self.assertContains(resposta, "mailto:maria@loja.com")
+        self.assertContains(resposta, 'data-confirmar-titulo="Excluir contato?"')
+
+    def test_principal_aparece_primeiro(self):
+        self.contato(**{"con-tipo": "outros", "con-nome": "Ana"})
+        self.contato(**{"con-tipo": "principal", "con-nome": "Zeca"})
+        self.assertEqual([c.nome for c in self.cliente.contatos.all()], ["Zeca", "Ana"])

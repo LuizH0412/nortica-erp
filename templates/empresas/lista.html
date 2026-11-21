@@ -17,11 +17,16 @@
     {% include "partials/filtro_situacao.html" with rotulo="Só desativadas" %}
   </form>
   {% if request.user.eh_master %}
-  <a href="{% url 'empresa_criar' %}"
+  <div class="flex flex-wrap items-center gap-2">
+    {% include "partials/botao_excluir_selecionados.html" with titulo="Excluir empresas selecionadas?" %}
+    <a href="{% url 'empresa_criar' %}"
      class="btn btn-novo">{% include "partials/icone_mais.html" %} Nova empresa</a>
+  </div>
   {% endif %}
 </div>
 
+<form method="post" id="form-selecionados" action="{% url 'empresa_excluir_selecionados' %}">
+{% csrf_token %}
 <div class="bg-surface border border-line rounded-xl overflow-hidden">
   <div class="overflow-x-auto">
     <table class="w-full text-sm">
@@ -34,11 +39,12 @@
             </div>
           </th>
           <th class="w-12 px-0 py-3"></th>
+          {% include "partials/th_ordenar.html" with campo="codigo" rotulo="Código" %}
           {% include "partials/th_ordenar.html" with campo="unidade" rotulo="Unidade" %}
           {% include "partials/th_ordenar.html" with campo="empresa" rotulo="Empresa" %}
-          {% include "partials/th_ordenar.html" with campo="documento" rotulo="CPF/CNPJ" %}
-          {% include "partials/th_ordenar.html" with campo="cidade" rotulo="Cidade" %}
-          {% include "partials/th_ordenar.html" with campo="situacao" rotulo="Situação" %}
+          <th class="px-4 py-3 font-medium ">CPF/CNPJ</th>
+          <th class="px-4 py-3 font-medium ">Cidade</th>
+          <th class="px-4 py-3 font-medium ">Situação</th>
         </tr>
       </thead>
       <tbody class="divide-y divide-line">
@@ -61,6 +67,7 @@
             </div>
           </td>
           {# Cada célula é um link para abrir o registro #}
+          <td class="p-0 tabular-nums text-ink-soft"><a href="{{ url_abrir }}" tabindex="-1" class="block px-4 py-3">{{ e.pk }}</a></td>
           <td class="p-0 font-medium">
             <a href="{{ url_abrir }}" tabindex="-1" class="block px-4 py-3">{{ e.unidade }}</a>
           </td>
@@ -88,7 +95,7 @@
         </tr>
         {% empty %}
         <tr>
-          <td colspan="7" class="px-4 py-10 text-center text-ink-soft">
+          <td colspan="8" class="px-4 py-10 text-center text-ink-soft">
             {% if q %}Nenhuma empresa {% if so_desativados %}desativada {% endif %}encontrada para "{{ q }}".
             {% elif so_desativados %}Nenhuma empresa desativada.
             {% else %}Nenhuma empresa ativa.
@@ -100,6 +107,7 @@
     </table>
   </div>
 </div>
+</form>
 
-<script>Nexum.selecao();</script>
+<script>Nexum.selecao(); Nexum.excluirSelecionados();</script>
 {% endblock %}

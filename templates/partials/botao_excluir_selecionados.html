@@ -1,0 +1,11 @@
+{% comment %}
+Botão "Excluir selecionados" das listas. Fica fora da tabela e envia o <form id="form-selecionados">
+que envolve a tabela (checkboxes name="selecionados" data-selecionar).
+Uso: include com titulo="Excluir clientes selecionados?"
+A página chama Nexum.selecao() e Nexum.excluirSelecionados().
+{% endcomment %}
+<button type="submit" form="form-selecionados" data-excluir-selecionados disabled
+        data-confirmar-titulo="{{ titulo|default:'Excluir selecionados?' }}"
+        class="btn btn-perigo-suave">
+  {% include "partials/icone_lixeira.html" %} Excluir selecionados<span data-contagem></span>
+</button>

@@ -1,4 +1,9 @@
+from decimal import Decimal
+
+from django.core.validators import MaxValueValidator, MinValueValidator
 from django.db import models
+
+from fiscal.tabelas import REGIMES
 
 from .validators import validar_documento
 
@@ -6,11 +11,9 @@ UFS = [(u, u) for u in "AC AL AP AM BA CE DF ES GO MA MT MS MG PA PB PR PE PI RJ
 
 
 class Empresa(models.Model):
-    class Regime(models.TextChoices):
-        MEI = "mei", "MEI"
-        SIMPLES = "simples", "Simples Nacional"
-        PRESUMIDO = "presumido", "Lucro Presumido"
-        REAL = "real", "Lucro Real"
+    class TipoInventario(models.TextChoices):
+        CONTABIL = "contabil", "Contábil"
+        FISICO = "fisico", "Físico"
 
     class NomeDocumento(models.TextChoices):
         FANTASIA = "fantasia", "Nome fantasia"
@@ -56,7 +59,20 @@ class Empresa(models.Model):
 
     # Fiscal
     regime_tributario = models.CharField(
-        "Regime tributário", max_length=15, choices=Regime.choices, blank=True
+        "Regime tributário", max_length=15, choices=REGIMES, blank=True,
+        help_text="O mesmo código da nota fiscal (CRT), usado também nos vínculos fiscais.",
+    )
+    aliquota_credito = models.DecimalField(
+        "Alíquota de crédito (%)", max_digits=5, decimal_places=2, default=Decimal("0"),
+        validators=[MinValueValidator(Decimal("0")), MaxValueValidator(Decimal("100"))],
+        help_text="Simples Nacional: percentual de crédito de ICMS informado na nota (pCredSN).",
+    )
+    tipo_inventario = models.CharField(
+        "Tipo de inventário", max_length=10, choices=TipoInventario.choices, default=TipoInventario.CONTABIL,
+    )
+    deduzir_icms_base_pis_cofins = models.BooleanField(
+        "Deduzir ICMS da base do PIS/COFINS", default=False,
+        help_text="Exclui o ICMS da base de cálculo do PIS e da COFINS (Tema 69 do STF).",
     )
 
     ativa = models.BooleanField("Empresa ativa", default=True)
@@ -90,7 +106,9 @@ class Empresa(models.Model):
 
     def vinculos_que_impedem_exclusao(self):
         """Nomes do que já está ligado a esta empresa. Vazio = pode excluir."""
-        ignorar = {"acessos"}  # o acesso dos usuários some junto com a empresa
+        # O acesso dos usuários, os saldos (sem movimentação) e a marcação de
+        # "produto oculto nesta empresa" somem junto com a empresa
+        ignorar = {"acessos", "estoques_produtos", "produtos_ocultos", "detalhes_fiscais_produtos", "certificado"}
         encontrados = []
         for rel in self._meta.related_objects:
             nome = rel.get_accessor_name()
@@ -139,3 +157,49 @@ class DadoDaEmpresa(models.Model):
 
     class Meta:
         abstract = True
+
+
+# ---------- Certificado digital ----------
+
+class CertificadoDigital(models.Model):
+    """
+    Certificado A1 da empresa (aba Fiscal). O arquivo e a senha ficam criptografados no banco
+    (veja empresas/certificado.py) — nunca na pasta media/, que é pública.
+    """
+
+    empresa = models.OneToOneField(Empresa, on_delete=models.CASCADE, related_name="certificado")
+    descricao = models.CharField("Descrição", max_length=120)
+    nome_arquivo = models.CharField("Arquivo", max_length=150, blank=True)
+    arquivo_cifrado = models.BinaryField(editable=False)
+    senha_cifrada = models.BinaryField(editable=False)
+    titular = models.CharField("Empresa registrada", max_length=200)
+    documento = models.CharField("CPF/CNPJ do certificado", max_length=14, blank=True)
+    emitido_em = models.DateTimeField("Data de aquisição")
+    validade = models.DateTimeField("Data de validade")
+    enviado_em = models.DateTimeField(auto_now_add=True)
+    enviado_por = models.ForeignKey(
+        "contas.Usuario", null=True, blank=True, on_delete=models.SET_NULL, related_name="+",
+    )
+
+    AVISO_DIAS = 30  # a partir de quantos dias antes de vencer a tela avisa
+
+    class Meta:
+        verbose_name = "certificado digital"
+        verbose_name_plural = "certificados digitais"
+
+    def __str__(self):
+        return f"{self.titular} (vence em {self.validade:%d/%m/%Y})"
+
+    @property
+    def dias_para_vencer(self):
+        from django.utils import timezone
+        return (self.validade - timezone.now()).days
+
+    @property
+    def vencido(self):
+        from django.utils import timezone
+        return self.validade <= timezone.now()
+
+    @property
+    def vencendo(self):
+        return not self.vencido and self.dias_para_vencer <= self.AVISO_DIAS

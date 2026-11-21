@@ -1,0 +1,60 @@
+{% comment %}
+Aba "Detalhes fiscais" do produto.
+- Produto novo: pede para salvar primeiro.
+- Uma empresa só: o formulário já vem aberto aqui (sem precisar escolher a empresa).
+- Várias empresas: lista as empresas; cada uma abre a sua página de detalhes fiscais.
+{% endcomment %}
+{% load formatos %}
+{% if not object %}
+<div class="rounded-xl border border-dashed border-line p-8 text-center text-sm text-ink-soft">
+  Salve o produto primeiro. Depois os detalhes fiscais (vínculo, NCM, CEST...) são preenchidos aqui, para cada empresa.
+</div>
+{% elif not empresas_fiscais %}
+<div class="rounded-xl border border-dashed border-line p-8 text-center text-sm text-ink-soft">
+  O produto não está em nenhuma empresa ativa. Marque as empresas na aba <strong>Empresa</strong>.
+</div>
+{% elif fiscal_form %}
+<div class="mb-5 flex items-center gap-3">
+  <span class="flex h-10 w-10 items-center justify-center rounded-xl bg-primary-soft text-primary-text">{% include "partials/icone_empresa.html" %}</span>
+  <div>
+    <h2 class="text-base font-semibold">{{ fiscal_empresa.unidade }}</h2>
+    <p class="text-xs text-ink-soft">{{ fiscal_empresa.nome_exibicao }}</p>
+  </div>
+</div>
+{% include "produtos/_fiscal_form.html" with voltar="produto" %}
+{% else %}
+<div class="grid gap-6 lg:grid-cols-3">
+  <div class="h-fit rounded-xl border border-warning/30 bg-warning/5 p-5 text-sm">
+    <h2 class="text-base font-semibold">Detalhes fiscais</h2>
+    <p class="mt-2 text-ink-soft">
+      Cada empresa tem os seus dados fiscais do produto (vínculo fiscal, NCM, CEST, origem...).
+      Clique na empresa para preencher.
+    </p>
+  </div>
+  <ul class="divide-y divide-line rounded-xl border border-line lg:col-span-2">
+    {% for empresa, detalhe in empresas_fiscais %}
+    <li>
+      <a href="{% url 'produto_fiscal' object.pk empresa.pk %}"
+         class="flex items-center gap-4 px-5 py-4 transition hover:bg-primary-soft/40">
+        <span class="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-page text-ink-soft">{% include "partials/icone_empresa.html" %}</span>
+        <span class="min-w-0 flex-1">
+          <span class="block font-medium">{{ empresa.unidade }}</span>
+          <span class="block truncate text-xs text-ink-soft">
+            {% if detalhe %}Atualizado {{ detalhe.atualizado_em|ha_quanto }}{% else %}Ainda não preenchido{% endif %}
+          </span>
+        </span>
+        <span class="text-right text-xs">
+          {% if detalhe and detalhe.vinculo %}
+          <span class="block font-medium text-ink">{{ detalhe.vinculo }}</span>
+          <span class="text-ink-soft">vínculo fiscal</span>
+          {% else %}
+          <span class="rounded-full bg-warning/15 px-2.5 py-0.5 font-medium text-warning">Sem vínculo</span>
+          {% endif %}
+          {% if detalhe.ncm %}<span class="mt-1 block text-ink-soft">NCM {{ detalhe.ncm }}</span>{% endif %}
+        </span>
+      </a>
+    </li>
+    {% endfor %}
+  </ul>
+</div>
+{% endif %}

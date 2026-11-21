@@ -1,12 +1,12 @@
 from django.contrib import messages
 from django.db.models import Count, Prefetch, ProtectedError, Q
 from django.shortcuts import get_object_or_404, redirect, render
-from django.urls import reverse, reverse_lazy
+from django.urls import reverse
 from django.utils.http import url_has_allowed_host_and_scheme
 from django.views.decorators.http import require_POST
 from django.views.generic import CreateView, ListView, UpdateView
 
-from core.listas import FiltroSituacaoMixin, OrdenacaoMixin
+from core.listas import FiltroSituacaoMixin, OrdenacaoMixin, excluir_selecionados
 
 from .forms import (
     AdicionarPerfilForm,
@@ -51,10 +51,7 @@ def _voltar(request, padrao):
 
 class UsuarioListView(AdministradorMixin, FiltroSituacaoMixin, OrdenacaoMixin, ListView):
     campo_ativo = "is_active"
-    ordenacoes = {
-        "nome": ["first_name", "last_name"], "email": "email",
-        "funcionario": "funcionario__nome", "situacao": "is_active",
-    }
+    ordenacoes = {"codigo": "pk", "nome": ["first_name", "last_name"]}  # só Código e nome têm seta
     paginate_by = 20
     context_object_name = "usuarios"
 
@@ -114,7 +111,9 @@ class UsuarioCriarView(UsuarioFormMixin, CreateView):
 class UsuarioEditarView(UsuarioFormMixin, UpdateView):
     form_class = UsuarioForm
     extra_context = {"titulo": "Editar usuário"}
-    success_url = reverse_lazy("usuario_lista")
+
+    def get_success_url(self):
+        return reverse("usuario_editar", args=[self.object.pk])  # continua no cadastro
 
     def get_context_data(self, **kwargs):
         contexto = super().get_context_data(**kwargs)
@@ -182,7 +181,7 @@ def usuario_acesso_remover(request, pk):
 class PerfilListView(AdministradorMixin, OrdenacaoMixin, ListView):
     template_name = "perfis/lista.html"
     context_object_name = "perfis"
-    ordenacoes = {"codigo": "pk", "nome": "nome", "permissoes": "pode_configurar", "usuarios": "total_usuarios"}
+    ordenacoes = {"codigo": "pk", "nome": "nome"}  # só Código e nome têm seta
 
     def get_queryset(self):
         return self.ordenar(
@@ -194,7 +193,9 @@ class PerfilFormMixin(AdministradorMixin):
     model = Perfil
     form_class = PerfilForm
     template_name = "perfis/form.html"
-    success_url = reverse_lazy("perfil_lista")
+
+    def get_success_url(self):
+        return reverse("perfil_editar", args=[self.object.pk])  # continua no cadastro
 
 
 class PerfilCriarView(PerfilFormMixin, CreateView):
@@ -226,4 +227,27 @@ def perfil_excluir(request, pk):
         )
         return redirect("perfil_editar", pk=pk)
     messages.success(request, f"Perfil {perfil} excluído.")
+    return redirect("perfil_lista")
+
+
+@administrador_requerido
+@require_POST
+def usuario_excluir_selecionados(request):
+    def impedimento(usuario):
+        return "é o seu próprio usuário" if usuario.pk == request.user.pk else None
+
+    excluir_selecionados(request, usuarios_visiveis(), singular="usuário", plural="usuários",
+                         impedimento=impedimento)
+    return redirect("usuario_lista")
+
+
+@administrador_requerido
+@require_POST
+def perfil_excluir_selecionados(request):
+    def impedimento(perfil):
+        total = perfil.acessos.values("usuario").distinct().count()
+        return f"em uso por {total} usuário{'s' if total > 1 else ''}" if total else None
+
+    excluir_selecionados(request, Perfil.objects.all(), singular="perfil de acesso", plural="perfis de acesso",
+                         impedimento=impedimento)
     return redirect("perfil_lista")

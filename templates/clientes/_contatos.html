@@ -1,0 +1,74 @@
+{# Aba "Contatos": lista + botão que abre a janela (clientes/_dialogo_contato.html) #}
+<div class="flex flex-wrap items-center justify-between gap-3">
+  <p class="text-sm text-ink-soft">Pessoas e telefones para falar com o cliente. O contato principal aparece primeiro.</p>
+  <button type="button" data-novo-contato class="btn btn-novo">{% include "partials/icone_mais.html" %} Contato</button>
+</div>
+
+<div class="mt-4 overflow-hidden rounded-xl border border-line">
+  <div class="overflow-x-auto">
+    <table class="w-full text-sm">
+      <thead class="bg-page text-ink-soft text-left">
+        <tr>
+          <th class="w-12 px-0 py-3"></th>
+          <th class="px-4 py-3 font-medium">Tipo</th>
+          <th class="px-4 py-3 font-medium">Contato</th>
+          <th class="px-4 py-3 font-medium">Telefone</th>
+          <th class="px-4 py-3 font-medium">E-mail</th>
+          <th class="w-12 px-0 py-3"></th>
+        </tr>
+      </thead>
+      <tbody class="divide-y divide-line">
+        {% for c in contatos %}
+        <tr class="hover:bg-primary-soft/60 transition-colors">
+          <td class="px-0 py-3">
+            <div class="flex items-center justify-center">
+              <button type="button" data-editar-contato="{{ c.pk }}" title="Editar" aria-label="Editar contato {{ c.nome }}"
+                      class="inline-flex rounded-md p-1.5 text-ink-soft hover:text-primary-text hover:bg-primary-soft transition">
+                {% include "partials/icone_lapis.html" %}
+              </button>
+            </div>
+          </td>
+          <td class="px-4 py-3">
+            {% if c.eh_principal %}
+            <span class="inline-flex items-center gap-1 rounded-full bg-linear-to-r from-primary to-accent px-2.5 py-0.5 text-xs font-semibold text-white">
+              <svg class="h-3 w-3" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>
+              Principal
+            </span>
+            {% else %}
+            <span class="rounded-full bg-page px-2.5 py-0.5 text-xs font-medium text-ink-soft">Outros</span>
+            {% endif %}
+          </td>
+          <td class="px-4 py-3">
+            <button type="button" data-editar-contato="{{ c.pk }}" class="text-left font-medium hover:text-primary-text">{{ c.nome }}</button>
+          </td>
+          <td class="px-4 py-3 whitespace-nowrap">
+            <a href="tel:+55{{ c.ddd }}{{ c.telefone }}" class="hover:text-primary-text hover:underline">{{ c.telefone_formatado }}</a>
+          </td>
+          <td class="px-4 py-3">
+            {% if c.email %}<a href="mailto:{{ c.email }}" class="hover:text-primary-text hover:underline">{{ c.email }}</a>{% else %}<span class="text-ink-soft">—</span>{% endif %}
+          </td>
+          <td class="px-0 py-3">
+            <div class="flex items-center justify-center">
+              <form method="post" action="{% url 'cliente_contato_excluir' object.pk c.pk %}"
+                    data-confirmar-titulo="Excluir contato?"
+                    data-confirmar="O contato “{{ c.nome }}” ({{ c.telefone_formatado }}) será excluído.">
+                {% csrf_token %}
+                <button type="submit" title="Excluir" aria-label="Excluir contato {{ c.nome }}"
+                        class="inline-flex rounded-md p-1.5 text-ink-soft transition hover:bg-danger-soft hover:text-danger">
+                  {% include "partials/icone_lixeira.html" %}
+                </button>
+              </form>
+            </div>
+          </td>
+        </tr>
+        {% empty %}
+        <tr>
+          <td colspan="6" class="px-4 py-10 text-center text-ink-soft">
+            Nenhum contato cadastrado. Clique em <strong>+ Contato</strong> para adicionar.
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>

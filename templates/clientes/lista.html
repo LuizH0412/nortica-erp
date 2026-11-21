@@ -16,9 +16,14 @@
     </div>
     {% include "partials/filtro_situacao.html" %}
   </form>
-  <a href="{% url 'cliente_criar' %}" class="btn btn-novo">{% include "partials/icone_mais.html" %} Novo cliente</a>
+  <div class="flex flex-wrap items-center gap-2">
+    {% include "partials/botao_excluir_selecionados.html" with titulo="Excluir clientes selecionados?" %}
+    <a href="{% url 'cliente_criar' %}" class="btn btn-novo">{% include "partials/icone_mais.html" %} Novo cliente</a>
+  </div>
 </div>
 
+<form method="post" id="form-selecionados" action="{% url 'cliente_excluir_selecionados' %}">
+{% csrf_token %}
 <div class="bg-surface border border-line rounded-xl overflow-hidden">
   <div class="overflow-x-auto">
     <table class="w-full text-sm">
@@ -31,12 +36,13 @@
             </div>
           </th>
           <th class="w-12 px-0 py-3"></th>
+          {% include "partials/th_ordenar.html" with campo="codigo" rotulo="Código" %}
           {% include "partials/th_ordenar.html" with campo="nome" rotulo="Nome" %}
-          {% include "partials/th_ordenar.html" with campo="documento" rotulo="CPF/CNPJ" %}
-          {% include "partials/th_ordenar.html" with campo="cidade" rotulo="Cidade" %}
-          {% include "partials/th_ordenar.html" with campo="tipo" rotulo="Tipo" %}
-          {% include "partials/th_ordenar.html" with campo="atendente" rotulo="Atendente" %}
-          {% include "partials/th_ordenar.html" with campo="situacao" rotulo="Situação" %}
+          <th class="px-4 py-3 font-medium ">CPF/CNPJ</th>
+          <th class="px-4 py-3 font-medium ">Cidade</th>
+          <th class="px-4 py-3 font-medium ">Tipo</th>
+          <th class="px-4 py-3 font-medium ">Atendente</th>
+          <th class="px-4 py-3 font-medium ">Situação</th>
         </tr>
       </thead>
       <tbody class="divide-y divide-line">
@@ -59,6 +65,7 @@
             </div>
           </td>
           {# Cada célula é um link para abrir o registro #}
+          <td class="p-0 tabular-nums text-ink-soft"><a href="{{ url_abrir }}" tabindex="-1" class="block px-4 py-3">{{ c.pk }}</a></td>
           <td class="p-0">
             <a href="{{ url_abrir }}" tabindex="-1" class="block px-4 py-3">
               <div class="font-medium">{{ c.nome_exibicao }}</div>
@@ -87,7 +94,7 @@
         </tr>
         {% empty %}
         <tr>
-          <td colspan="8" class="px-4 py-10 text-center text-ink-soft">
+          <td colspan="9" class="px-4 py-10 text-center text-ink-soft">
             {% if q %}Nenhum cliente {% if so_desativados %}desativado {% endif %}encontrado para "{{ q }}".
             {% elif so_desativados %}Nenhum cliente desativado.
             {% else %}Nenhum cliente ativo. Clique em <strong>Novo cliente</strong> para cadastrar.{% endif %}
@@ -98,8 +105,9 @@
     </table>
   </div>
 </div>
+</form>
 
 {% include "partials/paginacao.html" %}
 
-<script>Nexum.selecao();</script>
+<script>Nexum.selecao(); Nexum.excluirSelecionados();</script>
 {% endblock %}

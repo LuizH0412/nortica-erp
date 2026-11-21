@@ -33,7 +33,7 @@
       </button>
       <button type="button" data-aba="enderecos" class="aba">Outros endereços{% if enderecos %} <span class="rounded-full bg-primary-soft px-1.5 text-[10px] font-semibold text-primary-text">{{ enderecos|length }}</span>{% endif %}</button>
       <button type="button" data-aba="financeiro" class="aba">Financeiro</button>
-      <button type="button" data-aba="contatos" class="aba">Contatos <span class="rounded-full bg-page px-1.5 text-[10px] text-ink-soft">em breve</span></button>
+      <button type="button" data-aba="contatos" class="aba">Contatos{% if contatos %} <span class="rounded-full bg-primary-soft px-1.5 text-[10px] font-semibold text-primary-text">{{ contatos|length }}</span>{% endif %}</button>
     </div>
 
     <div class="p-6">
@@ -176,7 +176,16 @@
         {% include "clientes/_financeiro.html" %}
         {% endif %}
       </div>
-      <div data-painel="contatos" class="hidden">{% include "clientes/_em_breve.html" with aba="Contatos" %}</div>
+      <!-- ABA: CONTATOS -->
+      <div data-painel="contatos" class="hidden">
+        {% if not object %}
+        <p class="rounded-lg bg-primary-soft text-primary-text border border-line px-4 py-3 text-sm">
+          Salve os dados cadastrais do cliente primeiro. Depois volte aqui para adicionar os contatos.
+        </p>
+        {% else %}
+        {% include "clientes/_contatos.html" %}
+        {% endif %}
+      </div>
     </div>
   </div>
 </div>
@@ -195,6 +204,8 @@
 {% if object %}
 {% include "clientes/_dialogo_endereco.html" %}
 {{ enderecos_dados|json_script:"enderecos-dados" }}
+{% include "clientes/_dialogo_contato.html" %}
+{{ contatos_dados|json_script:"contatos-dados" }}
 {% endif %}
 
 <script>
@@ -252,6 +263,56 @@
       // Voltou com erro: reabre a janela como estava
       mostrarAba("enderecos");
       dialogoEndereco.showModal();
+      {% endif %}
+    }
+
+    // ---------- Aba "Contatos": janela de adicionar / editar ----------
+    var dialogoContato = el("dialogo-contato");
+    if (dialogoContato) {
+      var formContato = el("form-contato");
+      var contatos = JSON.parse(el("contatos-dados").textContent);
+      var urlNovoContato = "{% if object %}{% url 'cliente_contato_novo' object.pk %}{% endif %}";
+      var urlEditarContato = "{% if object %}{% url 'cliente_contato_editar' object.pk 0 %}{% endif %}";
+      var tipoContato = el("id_con-tipo"), avisoPrincipal = dialogoContato.querySelector("[data-aviso-principal]");
+      var editando = null;
+
+      function outroPrincipal() {
+        return contatos.some(function (c) { return c.tipo === "principal" && (!editando || c.id !== editando.id); });
+      }
+      function atualizarAvisoPrincipal() {
+        avisoPrincipal.classList.toggle("hidden", !(tipoContato.value === "principal" && outroPrincipal()));
+      }
+      tipoContato.addEventListener("change", atualizarAvisoPrincipal);
+
+      function abrirContato(item) {
+        editando = item;
+        ["nome", "ddd", "telefone", "email"].forEach(function (c) {
+          var campo = el("id_con-" + c);
+          campo.value = item ? (item[c] || "") : "";
+          campo.dispatchEvent(new Event("input", { bubbles: true }));  // aplica a máscara do telefone
+        });
+        // Novo: principal se o cliente ainda não tem um
+        tipoContato.value = item ? item.tipo : (outroPrincipal() ? "outros" : "principal");
+        formContato.action = item ? urlEditarContato.replace("/0/", "/" + item.id + "/") : urlNovoContato;
+        el("contato-titulo").textContent = item ? "Editar contato" : "Adicione um contato";
+        formContato.querySelectorAll("[data-erro]").forEach(function (e) { e.remove(); });
+        atualizarAvisoPrincipal();
+        dialogoContato.showModal();
+        el("id_con-nome").focus();
+      }
+      document.querySelectorAll("[data-novo-contato]").forEach(function (b) {
+        b.addEventListener("click", function () { abrirContato(null); });
+      });
+      document.querySelectorAll("[data-editar-contato]").forEach(function (b) {
+        b.addEventListener("click", function () {
+          abrirContato(contatos.find(function (c) { return String(c.id) === b.dataset.editarContato; }));
+        });
+      });
+      {% if abrir_contato %}
+      // Voltou com erro: reabre a janela como estava
+      mostrarAba("contatos");
+      atualizarAvisoPrincipal();
+      dialogoContato.showModal();
       {% endif %}
     }
 

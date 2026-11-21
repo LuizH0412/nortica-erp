@@ -5,13 +5,13 @@ from django import forms
 from django.core.exceptions import ValidationError
 from django.db.models import Q
 
-from core.forms import CadastroSimplesForm, DataInput, EstiloTailwindMixin, ValorField
+from core.forms import CadastroSimplesForm, DataInput, EstiloTailwindMixin, ValorField, ativos_ou
 from empresas.models import UFS
 from empresas.validators import cnpj_valido, cpf_valido, limpar_documento
 from funcionarios.models import Funcionario
 from localidades.models import Municipio
 
-from .models import Area, Cliente, EnderecoCliente, Tag, TipoCliente
+from .models import Area, Cliente, ContatoCliente, EnderecoCliente, Tag, TipoCliente
 
 # Quem pode ser atendente de um cliente
 FUNCOES_ATENDENTE = ("atendente", "vendedor")
@@ -23,13 +23,6 @@ def atendentes_possiveis(incluir=None):
     if incluir:
         filtro |= Q(pk=incluir)
     return Funcionario.objects.filter(filtro).order_by("nome")
-
-
-def ativos_ou(queryset, *atuais):
-    """Só os itens ativos de um cadastro simples, mais os que o registro já usa."""
-    atuais = [a for a in atuais if a]
-    filtro = Q(ativo=True) | Q(pk__in=atuais) if atuais else Q(ativo=True)
-    return queryset.filter(filtro)
 
 
 class ClienteForm(EstiloTailwindMixin, forms.ModelForm):
@@ -133,6 +126,38 @@ class EnderecoClienteForm(EstiloTailwindMixin, forms.ModelForm):
 
     def clean_cep(self):
         return re.sub(r"\D", "", self.cleaned_data.get("cep", ""))
+
+
+class ContatoClienteForm(EstiloTailwindMixin, forms.ModelForm):
+    """Janela "Adicione um contato" da aba Contatos (prefixo "con" nos campos)."""
+
+    ddd = forms.CharField(label="DDD", max_length=4, error_messages={"required": "Informe o DDD."})
+    telefone = forms.CharField(
+        label="Telefone", max_length=11, error_messages={"required": "Informe o telefone."},
+        help_text="Fixo (8 números) ou celular (9 números).",
+    )
+
+    class Meta:
+        model = ContatoCliente
+        fields = ["tipo", "nome", "ddd", "telefone", "email"]
+
+    def __init__(self, *args, **kwargs):
+        kwargs.setdefault("prefix", "con")
+        super().__init__(*args, **kwargs)
+        self.fields["ddd"].widget.attrs.update({"inputmode": "numeric", "maxlength": "2", "placeholder": "00"})
+        self.fields["telefone"].widget.attrs.update({"data-mascara": "fone", "inputmode": "numeric", "placeholder": "00000-0000"})
+
+    def clean_ddd(self):
+        ddd = re.sub(r"\D", "", self.cleaned_data["ddd"])
+        if len(ddd) != 2 or ddd[0] == "0":
+            raise ValidationError("DDD inválido.")
+        return ddd
+
+    def clean_telefone(self):
+        telefone = re.sub(r"\D", "", self.cleaned_data["telefone"])
+        if len(telefone) not in (8, 9):
+            raise ValidationError("O telefone tem 8 números (fixo) ou 9 (celular).")
+        return telefone
 
 
 class CreditoClienteForm(EstiloTailwindMixin, forms.ModelForm):

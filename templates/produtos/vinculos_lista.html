@@ -1,0 +1,121 @@
+{% extends "base_app.html" %}
+{% block title %}Vínculos fiscais · Nexum{% endblock %}
+{% block page_title %}Vínculos fiscais{% endblock %}
+
+{% block page %}
+<div class="flex flex-wrap items-center justify-between gap-3 mb-4">
+  <form method="get" class="flex w-full max-w-xl flex-wrap items-center gap-2">
+    <div class="relative min-w-60 flex-1">
+      <span class="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-ink-soft">
+        {% include "partials/icone_busca.html" %}
+      </span>
+      <input type="search" name="q" value="{{ q }}" placeholder="Buscar pela descrição, código ou NCM"
+             class="w-full rounded-lg border border-line bg-surface pl-9 pr-3 py-2 text-sm
+                    focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/30">
+    </div>
+    {% include "partials/filtro_situacao.html" %}
+  </form>
+  <div class="flex flex-wrap items-center gap-2">
+    {% include "partials/botao_excluir_selecionados.html" with titulo="Excluir vínculos selecionados?" %}
+    <a href="{% url 'vinculo_criar' %}" class="btn btn-novo">{% include "partials/icone_mais.html" %} Novo vínculo</a>
+  </div>
+</div>
+
+<p class="mb-4 text-sm text-ink-soft">
+  Cada vínculo reúne a tributação (CFOP, ICMS, PIS/COFINS, IPI e IBS/CBS) de NF-e e NFC-e, para entrada e saída.
+  Os produtos usam o vínculo escolhido nos detalhes fiscais, ou o da sua NCM, ou o <strong>vínculo padrão</strong>.
+</p>
+
+<form method="post" id="form-selecionados" action="{% url 'vinculo_excluir_selecionados' %}">
+{% csrf_token %}
+</form>
+<div class="bg-surface border border-line rounded-xl overflow-hidden">
+  <div class="overflow-x-auto">
+    <table class="w-full text-sm">
+      <thead class="bg-page text-ink-soft text-left">
+        <tr>
+          <th class="w-12 px-0 py-3">
+            <div class="flex items-center justify-center">
+              <input type="checkbox" data-selecionar-todos aria-label="Selecionar todos"
+                     class="h-4 w-4 rounded border-line accent-primary cursor-pointer">
+            </div>
+          </th>
+          <th class="w-12 px-0 py-3"></th>
+          {% include "partials/th_ordenar.html" with campo="codigo" rotulo="Código" %}
+          {% include "partials/th_ordenar.html" with campo="nome" rotulo="Descrição" %}
+          <th class="px-4 py-3 font-medium">Configurações</th>
+          <th class="px-4 py-3 font-medium">Produtos</th>
+          <th class="px-4 py-3 font-medium">Situação</th>
+          <th class="px-4 py-3 font-medium text-center">Vínculo padrão</th>
+        </tr>
+      </thead>
+      <tbody class="divide-y divide-line">
+        {% for v in vinculos %}
+        {% url 'vinculo_editar' v.pk as url_abrir %}
+        <tr class="hover:bg-primary-soft/60 transition-colors">
+          <td class="px-0 py-3">
+            <div class="flex items-center justify-center">
+              <input type="checkbox" name="selecionados" value="{{ v.pk }}" data-selecionar form="form-selecionados"
+                     aria-label="Selecionar {{ v }}" class="h-4 w-4 rounded border-line accent-primary cursor-pointer">
+            </div>
+          </td>
+          <td class="px-0 py-3">
+            <div class="flex items-center justify-center">
+              <a href="{{ url_abrir }}" title="Editar" aria-label="Editar {{ v }}"
+                 class="inline-flex rounded-md p-1.5 text-ink-soft hover:text-primary-text hover:bg-primary-soft transition">
+                {% include "partials/icone_lapis.html" %}
+              </a>
+            </div>
+          </td>
+          <td class="p-0 tabular-nums text-ink-soft"><a href="{{ url_abrir }}" tabindex="-1" class="block px-4 py-3">{{ v.pk }}</a></td>
+          <td class="p-0">
+            <a href="{{ url_abrir }}" tabindex="-1" class="block px-4 py-3">
+              <span class="font-medium">{{ v.nome }}</span>
+              <span class="block text-xs text-ink-soft">{{ v.get_tipo_item_display }}{% if v.total_ncms %} · {{ v.total_ncms }} NCM{{ v.total_ncms|pluralize:"s" }}{% endif %}</span>
+            </a>
+          </td>
+          <td class="p-0">
+            <a href="{{ url_abrir }}#configuracoes" tabindex="-1" class="block px-4 py-3">
+              {% if v.total_configuracoes %}{{ v.total_configuracoes }}
+              {% else %}<span class="rounded-full bg-warning/15 px-2.5 py-0.5 text-xs font-medium text-warning">Nenhuma</span>{% endif %}
+            </a>
+          </td>
+          <td class="p-0 tabular-nums"><a href="{{ url_abrir }}#produtos" tabindex="-1" class="block px-4 py-3 {% if not v.total_produtos %}text-ink-soft{% endif %}">{{ v.total_produtos }}</a></td>
+          <td class="p-0">
+            <a href="{{ url_abrir }}" tabindex="-1" class="block px-4 py-3">
+              {% if v.ativo %}<span class="rounded-full bg-success/15 text-success px-2.5 py-0.5 text-xs font-medium">Ativo</span>
+              {% else %}<span class="rounded-full bg-ink-soft/15 text-ink-soft px-2.5 py-0.5 text-xs font-medium">Desativado</span>{% endif %}
+            </a>
+          </td>
+          <td class="px-4 py-2 text-center">
+            <form method="post" action="{% url 'vinculo_padrao' v.pk %}" class="inline-flex">
+              {% csrf_token %}
+              <input type="hidden" name="voltar" value="{{ request.get_full_path }}">
+              <button type="submit" role="switch" aria-checked="{% if v.padrao %}true{% else %}false{% endif %}"
+                      title="{% if v.padrao %}É o vínculo padrão (clique para desligar){% else %}Tornar o vínculo padrão{% endif %}"
+                      class="relative inline-flex h-6 w-11 items-center rounded-full transition {% if v.padrao %}bg-primary{% else %}bg-line{% endif %}"
+                      {% if not v.ativo and not v.padrao %}disabled{% endif %}>
+                <span class="sr-only">Vínculo padrão</span>
+                <span class="absolute left-0.5 top-0.5 h-5 w-5 rounded-full bg-white shadow transition {% if v.padrao %}translate-x-5{% endif %}"></span>
+              </button>
+            </form>
+          </td>
+        </tr>
+        {% empty %}
+        <tr>
+          <td colspan="8" class="px-4 py-10 text-center text-ink-soft">
+            {% if q %}Nenhum vínculo {% if so_desativados %}desativado {% endif %}encontrado para "{{ q }}".
+            {% elif so_desativados %}Nenhum vínculo desativado.
+            {% else %}Nenhum vínculo fiscal ainda. Clique em <strong>Novo vínculo</strong> para cadastrar.{% endif %}
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+
+{% include "partials/paginacao.html" %}
+
+<script>Nexum.selecao(); Nexum.excluirSelecionados();</script>
+{% endblock %}

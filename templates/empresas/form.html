@@ -118,13 +118,88 @@
       </div>
 
       <!-- ABA: FISCAL -->
-      <div data-painel="fiscal" class="hidden">
-        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-          <div>{% include "partials/campo.html" with campo=form.regime_tributario %}</div>
-        </div>
-        <p class="mt-6 text-sm text-ink-soft">
-          Certificado digital e demais configurações de nota fiscal entrarão aqui quando forem criados.
-        </p>
+      <div data-painel="fiscal" class="hidden space-y-6">
+        <section class="rounded-xl border border-line">
+          <header class="border-b border-line px-5 py-3">
+            <h2 class="text-sm font-semibold">Fiscal / tributário</h2>
+            <p class="text-xs text-ink-soft">Regime da empresa e como ele entra nas notas e nos cálculos.</p>
+          </header>
+          <div class="grid grid-cols-1 gap-4 p-5 sm:grid-cols-2 lg:grid-cols-3">
+            <div>{% include "partials/campo.html" with campo=form.regime_tributario %}</div>
+            <div>{% include "partials/campo.html" with campo=form.aliquota_credito %}</div>
+            <div>{% include "partials/campo.html" with campo=form.tipo_inventario %}</div>
+            <div class="sm:col-span-2 lg:col-span-3">{% include "partials/interruptor.html" with campo=form.deduzir_icms_base_pis_cofins %}</div>
+          </div>
+        </section>
+
+        {# ---------- Certificado digital (formulário próprio: os campos usam form="form-certificado") ---------- #}
+        <section class="rounded-xl border border-line">
+          <header class="flex items-center justify-between gap-3 border-b border-line px-5 py-3">
+            <div>
+              <h2 class="text-sm font-semibold">Certificado digital (A1)</h2>
+              <p class="text-xs text-ink-soft">Usado para assinar e transmitir as notas fiscais à Sefaz.</p>
+            </div>
+            {% if certificado %}
+              {% if certificado.vencido %}<span class="rounded-full bg-danger-soft px-2.5 py-0.5 text-xs font-medium text-danger">Vencido</span>
+              {% elif certificado.vencendo %}<span class="rounded-full bg-warning/15 px-2.5 py-0.5 text-xs font-medium text-warning">Vence em {{ certificado.dias_para_vencer }} dia{{ certificado.dias_para_vencer|pluralize }}</span>
+              {% else %}<span class="rounded-full bg-success/15 px-2.5 py-0.5 text-xs font-medium text-success">Válido</span>{% endif %}
+            {% endif %}
+          </header>
+
+          {% if not object %}
+          <p class="p-5 text-sm text-ink-soft">Salve a empresa primeiro. Depois o certificado é enviado aqui.</p>
+          {% elif certificado %}
+          <div class="overflow-x-auto">
+            <table class="w-full text-sm">
+              <thead class="bg-page text-left text-ink-soft">
+                <tr>
+                  <th class="w-12 px-3 py-2.5"></th>
+                  <th class="px-4 py-2.5 font-medium">Empresa registrada</th>
+                  <th class="px-4 py-2.5 font-medium">Data de aquisição</th>
+                  <th class="px-4 py-2.5 font-medium">Data de validade</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td class="px-3 py-3">
+                    <button type="submit" form="form-excluir-certificado" title="Excluir certificado" aria-label="Excluir certificado"
+                            class="rounded-md p-1.5 text-ink-soft transition hover:bg-danger-soft hover:text-danger">{% include "partials/icone_lixeira.html" %}</button>
+                  </td>
+                  <td class="px-4 py-3">
+                    <span class="font-medium">{{ certificado.titular }}</span>
+                    {% if certificado.nome_arquivo %}<span class="block text-xs text-ink-soft">{{ certificado.nome_arquivo }}</span>{% endif %}
+                  </td>
+                  <td class="px-4 py-3 tabular-nums">{{ certificado.emitido_em|date:"d/m/Y H:i" }}</td>
+                  <td class="px-4 py-3 tabular-nums {% if certificado.vencido %}font-semibold text-danger{% elif certificado.vencendo %}font-semibold text-warning{% endif %}">{{ certificado.validade|date:"d/m/Y H:i" }}</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+          <p class="border-t border-line px-5 py-3 text-xs text-ink-soft">
+            Para trocar (renovação), exclua este e envie o novo. O arquivo e a senha ficam guardados criptografados.
+          </p>
+          {% else %}
+          <div class="grid grid-cols-1 gap-4 p-5 md:grid-cols-2">
+            <div>
+              <label for="cert-arquivo" class="block text-sm font-medium"><span class="text-danger">*</span>Arquivo do certificado</label>
+              <input type="file" id="cert-arquivo" name="certificado" form="form-certificado" accept=".pfx,.p12"
+                     class="mt-1 block w-full rounded-lg border border-line bg-surface text-sm file:mr-3 file:border-0 file:bg-primary-soft file:px-3 file:py-2 file:font-medium file:text-primary-text">
+              <p class="mt-1 text-xs text-ink-soft">Arquivo .pfx ou .p12 (certificado A1).</p>
+            </div>
+            <div>
+              <label for="cert-senha" class="block text-sm font-medium"><span class="text-danger">*</span>Senha do certificado</label>
+              <input type="password" id="cert-senha" name="senha" form="form-certificado" autocomplete="new-password"
+                     class="{{ form.razao_social.field.widget.attrs.class }}">
+            </div>
+            <div class="md:col-span-2">
+              <button type="submit" form="form-certificado" class="btn btn-primario">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 13v8M4 14.9A7 7 0 1 1 15.7 8h1.8a4.5 4.5 0 0 1 2.5 8.2"/><path d="m8 17 4-4 4 4"/></svg>
+                Adicionar certificado
+              </button>
+            </div>
+          </div>
+          {% endif %}
+        </section>
       </div>
     </div>
   </div>
@@ -135,6 +210,17 @@
     <a href="{% url 'empresa_lista' %}" class="btn btn-texto">Cancelar</a>
   </div>
 </form>
+
+{% if object %}
+<form method="post" enctype="multipart/form-data" action="{% url 'empresa_certificado_enviar' object.pk %}" id="form-certificado" hidden>
+  {% csrf_token %}
+</form>
+<form method="post" action="{% url 'empresa_certificado_excluir' object.pk %}" id="form-excluir-certificado" hidden
+      data-confirmar-titulo="Excluir certificado?" data-confirmar="O certificado digital de {{ object.nome_exibicao }} será excluído."
+      data-confirmar-aviso="Sem certificado a empresa não consegue emitir notas fiscais.">
+  {% csrf_token %}
+</form>
+{% endif %}
 
 {% if object and request.user.eh_master and not impedimentos_exclusao %}
 <form method="post" action="{% url 'empresa_excluir' object.pk %}" id="form-excluir-empresa" hidden

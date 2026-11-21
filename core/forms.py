@@ -1,4 +1,7 @@
+from decimal import Decimal
+
 from django import forms
+from django.db.models import Q
 
 CLASSE_INPUT = (
     "mt-1 w-full rounded-lg border border-line bg-surface px-3 py-2 "
@@ -17,6 +20,12 @@ class ValorField(forms.DecimalField):
         kwargs.setdefault("localize", True)
         kwargs.setdefault("widget", forms.TextInput(attrs={"inputmode": "decimal", "placeholder": "0,00"}))
         super().__init__(*args, **kwargs)
+
+    def prepare_value(self, value):
+        # Sempre com as casas decimais do campo ("0" vira "0,00"), também nos cadastros novos
+        if isinstance(value, (Decimal, int, float)) and not isinstance(value, bool) and self.decimal_places is not None:
+            value = Decimal(str(value)).quantize(Decimal(1).scaleb(-self.decimal_places))
+        return super().prepare_value(value)
 
     def to_python(self, value):
         if isinstance(value, str) and "," in value:
@@ -49,10 +58,27 @@ class CadastroSimplesForm(EstiloTailwindMixin, forms.ModelForm):
     class Meta:
         fields = ["nome", "ativo"]
 
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        # Cadastro que pertence a outro (ex.: subgrupo -> grupo): o pai vem do POST como "pai"
+        self.pai_campo = getattr(self._meta.model, "pai_campo", None)
+        if self.pai_campo and not self.instance.pk and self.data.get("pai"):
+            setattr(self.instance, f"{self.pai_campo}_id", int(self.data["pai"]))
+
     def clean_nome(self):
         nome = " ".join(self.cleaned_data["nome"].split())
         modelo = self._meta.model
-        if modelo.objects.filter(nome__iexact=nome).exclude(pk=self.instance.pk).exists():
+        repetidos = modelo.objects.filter(nome__iexact=nome).exclude(pk=self.instance.pk)
+        if self.pai_campo:
+            repetidos = repetidos.filter(**{f"{self.pai_campo}_id": getattr(self.instance, f"{self.pai_campo}_id")})
+        if repetidos.exists():
             um = "uma" if modelo.artigo == "a" else "um"
             raise forms.ValidationError(f"Já existe {um} {modelo._meta.verbose_name} com este nome.")
         return nome
+
+
+def ativos_ou(queryset, *atuais):
+    """Só os itens ativos de um cadastro simples, mais os que o registro já usa."""
+    atuais = [a for a in atuais if a]
+    filtro = Q(ativo=True) | Q(pk__in=atuais) if atuais else Q(ativo=True)
+    return queryset.filter(filtro)

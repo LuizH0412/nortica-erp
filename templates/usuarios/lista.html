@@ -20,8 +20,11 @@
     {% url 'usuario_lista' as url_usuarios %}
     {% include "partials/filtro_situacao.html" with rotulo="Só bloqueados" htmx_url=url_usuarios htmx_alvo="#tabela-usuarios" %}
   </form>
-  <a href="{% url 'usuario_criar' %}"
+  <div class="flex flex-wrap items-center gap-2">
+    {% include "partials/botao_excluir_selecionados.html" with titulo="Excluir usuários selecionados?" %}
+    <a href="{% url 'usuario_criar' %}"
      class="btn btn-novo">{% include "partials/icone_mais.html" %} Novo usuário</a>
+  </div>
 </div>
 
 <p class="mb-4 text-sm text-ink-soft">
@@ -34,9 +37,10 @@
 
 <script>
   Nexum.selecao();
-  // Depois de cada busca, a tabela nova precisa da seleção de novo
+  Nexum.excluirSelecionados();
+  // Depois de cada busca, a tabela nova precisa da seleção e do botão de novo
   document.body.addEventListener("htmx:afterSwap", function (e) {
-    if (e.detail.target.id === "tabela-usuarios") Nexum.selecao();
+    if (e.detail.target.id === "tabela-usuarios") { Nexum.selecao(); Nexum.excluirSelecionados(); }
   });
 </script>
 {% endblock %}

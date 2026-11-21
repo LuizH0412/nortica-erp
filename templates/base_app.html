@@ -18,7 +18,7 @@
       </a>
 
       {# Cadastros do dia a dia: todos os usuários #}
-      <details class="group" data-menu data-grupo="menu" {% if 'cliente' in n %}open{% endif %}>
+      <details class="group" data-menu data-grupo="menu" {% if 'cliente' in n or 'produto' in n or 'vinculo' in n %}open{% endif %}>
         <summary class="flex items-center justify-between cursor-pointer list-none rounded-lg px-3 py-2
                         text-white/70 transition-colors duration-200 hover:bg-white/5 hover:text-white">
           <span class="flex items-center gap-3">
@@ -40,6 +40,35 @@
                     {% if 'cliente' in n %}bg-white/10 font-medium{% else %}text-white/70 hover:bg-white/5 hover:text-white{% endif %}">
             Clientes
           </a>
+
+          {# Produtos abre um segundo nível: Produtos, Grupos e Vínculos fiscais #}
+          <details class="group/prod" data-menu {% if 'produto' in n or 'vinculo' in n %}open{% endif %}>
+            <summary class="flex items-center justify-between cursor-pointer list-none rounded-lg px-3 py-1.5
+                            text-white/70 transition-colors duration-200 hover:bg-white/5 hover:text-white">
+              Produtos
+              <svg class="h-3.5 w-3.5 transition-transform duration-300 group-open/prod:rotate-90" viewBox="0 0 24 24" fill="none"
+                  stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="m9 18 6-6-6-6"/>
+              </svg>
+            </summary>
+            <div data-menu-conteudo class="mt-1 ml-3 pl-3 border-l border-white/10 space-y-1">
+              <a href="{% url 'produto_lista' %}"
+                class="block rounded-lg px-3 py-1.5 transition-colors duration-200
+                        {% if n == 'produto_lista' or n == 'produto_criar' or n == 'produto_editar' or n == 'produto_fiscal' %}bg-white/10 font-medium{% else %}text-white/70 hover:bg-white/5 hover:text-white{% endif %}">
+                Produto
+              </a>
+              <a href="{% url 'produto_grupos' %}"
+                class="block rounded-lg px-3 py-1.5 transition-colors duration-200
+                        {% if 'produto_grupo' in n %}bg-white/10 font-medium{% else %}text-white/70 hover:bg-white/5 hover:text-white{% endif %}">
+                Grupos
+              </a>
+              <a href="{% url 'produto_vinculos_fiscais' %}"
+                class="block rounded-lg px-3 py-1.5 transition-colors duration-200
+                        {% if n == 'produto_vinculos_fiscais' or 'vinculo_' in n %}bg-white/10 font-medium{% else %}text-white/70 hover:bg-white/5 hover:text-white{% endif %}">
+                Vínculos fiscais
+              </a>
+            </div>
+          </details>
         </div>
       </details>
 
@@ -145,5 +174,5 @@
     </main>
   </div>
 </div>
-<script>Nexum.menu(); Nexum.confirmacoes(); Nexum.dropdowns();</script>
+<script>Nexum.menu(); Nexum.confirmacoes(); Nexum.dropdowns(); Nexum.atualizarOpcoes(); Nexum.buscaveis();</script>
 {% endblock %}

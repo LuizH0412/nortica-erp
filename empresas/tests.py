@@ -1,3 +1,4 @@
+from decimal import Decimal
 from types import SimpleNamespace
 
 from django.core.exceptions import ValidationError
@@ -205,3 +206,125 @@ class SeletorDeEmpresaTests(InstanciaTestCase):
         self.client.post(reverse("trocar_empresa", args=[matriz.pk]))
         resposta = self.client.get(reverse("home"))
         self.assertNotContains(resposta, reverse("trocar_empresa", args=[outra.pk]))
+
+
+class FiscalTributarioTests(InstanciaTestCase):
+    """Aba Fiscal da empresa: regime, alíquota de crédito, tipo de inventário e dedução do ICMS."""
+
+    def test_salva_os_campos_fiscais(self):
+        from core.base_testes import MASTER
+        empresa = self.criar_empresa()
+        self.client.force_login(self.criar_usuario(nivel=MASTER))
+        self.client.post(reverse("trocar_empresa", args=[empresa.pk]))
+        dados = {
+            "unidade": empresa.unidade, "razao_social": "Empresa Fiscal LTDA", "documento": "11.222.333/0001-81",
+            "nome_nos_documentos": "fantasia", "ativa": "on",
+            "regime_tributario": "1", "aliquota_credito": "1,25", "tipo_inventario": "fisico",
+            "deduzir_icms_base_pis_cofins": "on",
+        }
+        r = self.client.post(reverse("empresa_editar", args=[empresa.pk]), dados)
+        self.assertEqual(r.status_code, 302, getattr(r, "context", None) and r.context["form"].errors)
+        empresa.refresh_from_db()
+        self.assertEqual((empresa.regime_tributario, empresa.aliquota_credito, empresa.tipo_inventario,
+                          empresa.deduzir_icms_base_pis_cofins), ("1", Decimal("1.25"), "fisico", True))
+        # Sem tipo de inventário e sem alíquota: contábil e zero
+        dados.update(tipo_inventario="", aliquota_credito="", deduzir_icms_base_pis_cofins="")
+        self.client.post(reverse("empresa_editar", args=[empresa.pk]), dados)
+        empresa.refresh_from_db()
+        self.assertEqual((empresa.tipo_inventario, empresa.aliquota_credito, empresa.deduzir_icms_base_pis_cofins),
+                         ("contabil", 0, False))
+        r = self.client.get(reverse("empresa_editar", args=[empresa.pk]))
+        self.assertContains(r, "Fiscal / tributário")
+
+
+def gerar_pfx(nome="EMPRESA TESTE LTDA:11222333000181", senha="1234", dias=365, inicio_dias=-1):
+    """Certificado A1 de teste (autoassinado), no formato da ICP-Brasil: "RAZÃO SOCIAL:CNPJ"."""
+    from datetime import datetime, timedelta
+    from datetime import timezone as tz
+
+    from cryptography import x509
+    from cryptography.hazmat.primitives import hashes, serialization
+    from cryptography.hazmat.primitives.asymmetric import rsa
+    from cryptography.hazmat.primitives.serialization import pkcs12
+    from cryptography.x509.oid import NameOID
+
+    chave = rsa.generate_private_key(public_exponent=65537, key_size=2048)
+    sujeito = x509.Name([x509.NameAttribute(NameOID.COMMON_NAME, nome)])
+    agora = datetime.now(tz.utc)
+    certificado = (
+        x509.CertificateBuilder().subject_name(sujeito).issuer_name(sujeito).public_key(chave.public_key())
+        .serial_number(x509.random_serial_number())
+        .not_valid_before(agora + timedelta(days=inicio_dias)).not_valid_after(agora + timedelta(days=dias))
+        .sign(chave, hashes.SHA256())
+    )
+    return pkcs12.serialize_key_and_certificates(
+        b"teste", chave, certificado, None, serialization.BestAvailableEncryption(senha.encode()),
+    )
+
+
+class CertificadoDigitalTests(InstanciaTestCase):
+    """Aba Fiscal da empresa: certificado digital A1."""
+
+    def setUp(self):
+        super().setUp()
+        self.empresa = self.criar_empresa()
+        Empresa.objects.filter(pk=self.empresa.pk).update(documento="11222333000181")
+        self.empresa.refresh_from_db()
+        self.client.force_login(self.criar_usuario(nivel=MASTER))
+        self.client.post(reverse("trocar_empresa", args=[self.empresa.pk]))
+        self.url = reverse("empresa_certificado_enviar", args=[self.empresa.pk])
+
+    def enviar(self, conteudo=None, senha="1234", nome="cert.pfx"):
+        from django.core.files.uploadedfile import SimpleUploadedFile
+        arquivo = SimpleUploadedFile(nome, gerar_pfx() if conteudo is None else conteudo)
+        return self.client.post(self.url, {"certificado": arquivo, "senha": senha}, follow=True)
+
+    def test_envia_mostra_e_guarda_criptografado(self):
+        from .certificado import carregar
+        from .models import CertificadoDigital
+        pfx = gerar_pfx()
+        r = self.enviar(pfx)
+        self.assertContains(r, "Certificado de EMPRESA TESTE LTDA:11222333000181 adicionado")
+        self.assertEqual(r.redirect_chain[-1][0], reverse("empresa_editar", args=[self.empresa.pk]) + "#fiscal")
+        c = CertificadoDigital.objects.get(empresa=self.empresa)
+        self.assertEqual((c.titular, c.documento, c.descricao),
+                         ("EMPRESA TESTE LTDA:11222333000181", "11222333000181", "EMPRESA TESTE LTDA:11222333000181"))
+        # Nada em texto puro: nem o arquivo nem a senha
+        self.assertNotEqual(bytes(c.arquivo_cifrado), pfx)
+        self.assertNotIn(b"1234", bytes(c.senha_cifrada))
+        chave, certificado = carregar(c)  # mas dá para abrir na hora de assinar
+        self.assertIsNotNone(chave)
+        pagina = self.client.get(reverse("empresa_editar", args=[self.empresa.pk]))
+        self.assertContains(pagina, "EMPRESA TESTE LTDA:11222333000181")
+        self.assertContains(pagina, "Válido")
+        self.assertNotContains(pagina, 'id="cert-senha"')  # com certificado, o formulário de envio some
+        self.assertNotContains(self.client.get(reverse("empresa_editar", args=[self.criar_empresa().pk])), 'name="descricao"')
+
+    def test_senha_errada_vencido_e_de_outro_cnpj(self):
+        from .models import CertificadoDigital
+        self.assertContains(self.enviar(senha="errada"), "Senha incorreta")
+        self.assertContains(self.enviar(gerar_pfx(dias=-1, inicio_dias=-400)), "Este certificado venceu em")
+        self.assertContains(self.enviar(gerar_pfx(nome="OUTRA LTDA:99888777000166")), "é de outro CPF/CNPJ (99888777000166)")
+        self.assertContains(self.enviar(nome="cert.txt"), "arquivo .pfx ou .p12")
+        self.assertContains(self.enviar(b"isto nao e certificado"), "Senha incorreta, ou o arquivo não é um certificado A1")
+        self.assertFalse(CertificadoDigital.objects.exists())
+
+    def test_filial_usa_o_da_matriz_e_aviso_de_vencimento(self):
+        Empresa.objects.filter(pk=self.empresa.pk).update(documento="11222333000262")  # filial: mesmo CNPJ base
+        self.enviar(gerar_pfx(dias=10))
+        pagina = self.client.get(reverse("empresa_editar", args=[self.empresa.pk]))
+        self.assertContains(pagina, "Vence em ")
+
+    def test_excluir_e_nao_impede_excluir_empresa(self):
+        from .models import CertificadoDigital
+        self.enviar()
+        self.assertEqual(self.empresa.vinculos_que_impedem_exclusao(), [])
+        self.client.post(reverse("empresa_certificado_excluir", args=[self.empresa.pk]))
+        self.assertFalse(CertificadoDigital.objects.exists())
+
+    def test_so_quem_configura(self):
+        from core.base_testes import COMUM
+        self.client.force_login(self.criar_usuario(nivel=COMUM, empresas=[self.empresa]))
+        from .models import CertificadoDigital
+        self.assertEqual(self.enviar().status_code, 403)
+        self.assertFalse(CertificadoDigital.objects.exists())

@@ -135,6 +135,14 @@
   .dialogo-animado[open], .dialogo-animado[open]::backdrop { animation: none; }
 }
 
+/* Painel lateral: <dialog class="painel-lateral ..."> entra deslizando da direita */
+@keyframes nexum-deslizar { from { transform: translateX(100%); } to { transform: translateX(0); } }
+.painel-lateral[open] { animation: nexum-deslizar 0.25s cubic-bezier(0.2, 0.8, 0.2, 1); }
+.painel-lateral[open]::backdrop { animation: nexum-escurecer 0.25s ease-out; }
+@media (prefers-reduced-motion: reduce) {
+  .painel-lateral[open], .painel-lateral[open]::backdrop { animation: none; }
+}
+
 /* Listas suspensas (seletor de empresa...) abrem com a mesma entrada suave das janelas */
 details[data-dropdown][open] > [data-dropdown-menu] {
   animation: nexum-surgir 0.16s cubic-bezier(0.2, 0.8, 0.2, 1);

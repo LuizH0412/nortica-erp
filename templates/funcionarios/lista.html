@@ -16,10 +16,15 @@
     </div>
     {% include "partials/filtro_situacao.html" %}
   </form>
-  <a href="{% url 'funcionario_criar' %}"
+  <div class="flex flex-wrap items-center gap-2">
+    {% include "partials/botao_excluir_selecionados.html" with titulo="Excluir funcionários selecionados?" %}
+    <a href="{% url 'funcionario_criar' %}"
      class="btn btn-novo">{% include "partials/icone_mais.html" %} Novo funcionário</a>
+  </div>
 </div>
 
+<form method="post" id="form-selecionados" action="{% url 'funcionario_excluir_selecionados' %}">
+{% csrf_token %}
 <div class="bg-surface border border-line rounded-xl overflow-hidden">
   <div class="overflow-x-auto">
     <table class="w-full text-sm">
@@ -32,12 +37,13 @@
             </div>
           </th>
           <th class="w-12 px-0 py-3"></th>
+          {% include "partials/th_ordenar.html" with campo="codigo" rotulo="Código" %}
           {% include "partials/th_ordenar.html" with campo="nome" rotulo="Nome" %}
-          {% include "partials/th_ordenar.html" with campo="funcao" rotulo="Função" %}
-          {% include "partials/th_ordenar.html" with campo="setor" rotulo="Setor" %}
-          {% include "partials/th_ordenar.html" with campo="cpf" rotulo="CPF" %}
-          {% include "partials/th_ordenar.html" with campo="acesso" rotulo="Acesso ao sistema" %}
-          {% include "partials/th_ordenar.html" with campo="situacao" rotulo="Situação" %}
+          <th class="px-4 py-3 font-medium ">Função</th>
+          <th class="px-4 py-3 font-medium ">Setor</th>
+          <th class="px-4 py-3 font-medium ">CPF</th>
+          <th class="px-4 py-3 font-medium ">Acesso ao sistema</th>
+          <th class="px-4 py-3 font-medium ">Situação</th>
         </tr>
       </thead>
       <tbody class="divide-y divide-line">
@@ -60,6 +66,7 @@
             </div>
           </td>
           {# Cada célula é um link para abrir o registro #}
+          <td class="p-0 tabular-nums text-ink-soft"><a href="{{ url_abrir }}" tabindex="-1" class="block px-4 py-3">{{ f.pk }}</a></td>
           <td class="p-0 font-medium"><a href="{{ url_abrir }}" tabindex="-1" class="block px-4 py-3">{{ f.nome }}</a></td>
           <td class="p-0"><a href="{{ url_abrir }}" tabindex="-1" class="block px-4 py-3">{{ f.funcao }}</a></td>
           <td class="p-0"><a href="{{ url_abrir }}" tabindex="-1" class="block px-4 py-3">{{ f.setor|default:"—" }}</a></td>
@@ -81,7 +88,7 @@
         </tr>
         {% empty %}
         <tr>
-          <td colspan="8" class="px-4 py-10 text-center text-ink-soft">
+          <td colspan="9" class="px-4 py-10 text-center text-ink-soft">
             {% if q %}Nenhum funcionário {% if so_desativados %}desativado {% endif %}encontrado para "{{ q }}".
             {% elif so_desativados %}Nenhum funcionário desativado.
             {% else %}Nenhum funcionário ativo. Clique em <strong>Novo funcionário</strong> para cadastrar.{% endif %}
@@ -92,8 +99,9 @@
     </table>
   </div>
 </div>
+</form>
 
 {% include "partials/paginacao.html" %}
 
-<script>Nexum.selecao();</script>
+<script>Nexum.selecao(); Nexum.excluirSelecionados();</script>
 {% endblock %}

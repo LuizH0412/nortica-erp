@@ -28,6 +28,12 @@
       campo.value = aplicar(v.replace(/\D/g, "").slice(0, 11), PADROES.cpf);
     } else if (tipo === "cep") {
       campo.value = aplicar(v.replace(/\D/g, "").slice(0, 8), PADROES.cep);
+    } else if (tipo === "numeros") {
+      campo.value = v.replace(/\D/g, "");
+    } else if (tipo === "fone") {
+      // Telefone sem DDD: 9999-9999 (fixo) ou 99999-9999 (celular)
+      v = v.replace(/\D/g, "").slice(0, 9);
+      campo.value = v.length > 8 ? aplicar(v, "XXXXX-XXXX") : aplicar(v, "XXXX-XXXX");
     } else if (tipo === "telefone") {
       v = v.replace(/\D/g, "").slice(0, 11);
       campo.value = aplicar(v, v.length > 10 ? PADROES.celular : PADROES.fixo);
@@ -311,7 +317,11 @@
     }
     function escolher(item) {
       var alvo = el(cfg.alvo);
-      if (alvo.tagName === "SELECT") { alvo.value = String(item.id); return; }
+      if (alvo.tagName === "SELECT") {
+        alvo.value = String(item.id);
+        alvo.dispatchEvent(new Event("change", { bubbles: true }));
+        return;
+      }
       var caixa = alvo.querySelector('input[value="' + item.id + '"]');
       if (caixa) caixa.checked = true;
     }
@@ -333,8 +343,11 @@
       else select.add(new Option(item.nome, item.id));
     }
 
+    // Cadastro que pertence a outro (ex.: subgrupo -> grupo): o valor do campo pai vai junto
+    function valorPai() { return cfg.paiCampo ? el(cfg.paiCampo).value : ""; }
+
     function carregar() {
-      fetch(cfg.urlLista + "?q=" + encodeURIComponent(busca.value.trim()))
+      fetch(cfg.urlLista + "?q=" + encodeURIComponent(busca.value.trim()) + "&pai=" + encodeURIComponent(valorPai()))
         .then(function (r) { return r.json(); })
         .then(function (r) { desenhar(r.itens); })
         .catch(falhou);
@@ -455,7 +468,7 @@
     function cadastrar() {
       var nome = novo.value.trim();
       if (!nome) { avisar("Digite o nome para cadastrar.", "info"); novo.focus(); return; }
-      enviar(cfg.urlCriar, { nome: nome }).then(function (r) {
+      enviar(cfg.urlCriar, { nome: nome, pai: valorPai() }).then(function (r) {
         if (!r.ok) { avisar(r.mensagem, "erro"); novo.focus(); return; }
         sincronizar(r.item);
         escolher(r.item);  // já fica escolhido no cadastro
@@ -468,6 +481,15 @@
     document.querySelectorAll("[data-gerenciar]").forEach(function (botao) {
       botao.addEventListener("click", function () {
         cfg = botao.dataset;
+        if (cfg.paiCampo && !valorPai()) {
+          Nexum.confirmar({
+            tipo: "info", titulo: "Escolha " + (cfg.paiRotulo || "o cadastro principal") + " primeiro",
+            mensagem: cfg.titulo + " são cadastrados dentro de " + (cfg.paiRotulo || "outro cadastro") +
+                      ". Escolha e clique no + de novo.",
+            botao: "Entendi", aviso: ""
+          });
+          return;
+        }
         titulo.textContent = cfg.titulo;
         novo.placeholder = "Nome d" + cfg.artigo + " nov" + cfg.artigo + " " + cfg.singular;
         busca.placeholder = "Pesquisar " + cfg.titulo.toLowerCase();
@@ -627,28 +649,41 @@
     });
   };
 
-  // ---------- "Excluir selecionados": só libera com algo marcado e pede confirmação ----------
+  // ---------- "Excluir selecionados": só libera com algo marcado, mostra quantos e pede confirmação ----------
+  // O botão pode ficar fora do <form> (atributo form="..."). Pode ser chamado de novo após o HTMX trocar a tabela.
   Nexum.excluirSelecionados = function () {
     document.querySelectorAll("[data-excluir-selecionados]").forEach(function (botao) {
       var form = botao.form;
-      var itens = form.querySelectorAll("[data-selecionar]");
-      function atualizar() {
-        botao.disabled = !Array.prototype.some.call(itens, function (i) { return i.checked; });
+      if (!form) return;
+      var contagem = botao.querySelector("[data-contagem]");
+      function marcados() {
+        // form.elements inclui as caixas fora do <form> ligadas por form="..." (ex.: tabela com outros forms por linha)
+        return Array.prototype.filter.call(form.elements, function (i) { return i.matches("[data-selecionar]") && i.checked; }).length;
       }
-      form.addEventListener("change", atualizar);
-      form.addEventListener("submit", function (e) {
-        if (form._confirmado) return;
-        e.preventDefault();
-        var total = Array.prototype.filter.call(itens, function (i) { return i.checked; }).length;
-        Nexum.confirmar({
-          titulo: botao.dataset.confirmarTitulo || "Excluir selecionados?",
-          mensagem: total === 1 ? "1 item selecionado será excluído." : total + " itens selecionados serão excluídos."
-        }).then(function (ok) {
-          if (!ok) return;
-          form._confirmado = true;
-          form.submit();
+      function atualizar() {
+        var total = marcados();
+        botao.disabled = total === 0;
+        if (contagem) contagem.textContent = total ? " (" + total + ")" : "";
+      }
+      if (!form._excluirLigado) {
+        form._excluirLigado = true;
+        document.addEventListener("change", function (e) {
+          if (e.target.form === form || e.target.matches("[data-selecionar-todos]")) atualizar();
         });
-      });
+        form.addEventListener("submit", function (e) {
+          if (form._confirmado) return;
+          e.preventDefault();
+          var total = marcados();
+          Nexum.confirmar({
+            titulo: botao.dataset.confirmarTitulo || "Excluir selecionados?",
+            mensagem: total === 1 ? "1 item selecionado será excluído." : total + " itens selecionados serão excluídos."
+          }).then(function (ok) {
+            if (!ok) return;
+            form._confirmado = true;
+            form.submit();
+          });
+        });
+      }
       atualizar();
     });
   };
@@ -667,4 +702,258 @@
       });
     });
   };
+
+  // ---------- Campos de cadastro sempre atualizados (pílulas) ----------
+  // As pílulas (ex.: TAGs) ligadas a um cadastro simples buscam a lista no banco de novo quando a pessoa
+  // volta para esta aba do navegador ou chega no campo: o que foi cadastrado em outra aba já aparece.
+  // (Os selects viraram busca digitável — Nexum.buscaveis — e consultam o banco a cada busca.)
+  Nexum.atualizarOpcoes = function () {
+    var campos = [];
+    document.querySelectorAll("[data-gerenciar]").forEach(function (b) {
+      var alvo = el(b.dataset.alvo);
+      if (!alvo || alvo.tagName === "SELECT" || alvo.dataset.atualizando) return;
+      alvo.dataset.atualizando = "1";
+      campos.push({ alvo: alvo, url: b.dataset.urlLista, ultima: 0 });
+    });
+    if (!campos.length) return;
+
+    function desenharPilulas(c, itens) {
+      var grupo = c.alvo, vazio = grupo.querySelector("[data-vazio]");
+      var porId = {};
+      itens.forEach(function (i) { porId[String(i.id)] = i; });
+      grupo.querySelectorAll("label.pilula").forEach(function (p) {
+        var caixa = p.querySelector("input"), item = porId[caixa.value];
+        if (item) { p.querySelector("span").textContent = item.nome; }
+        if ((!item || !item.ativo) && !caixa.checked) p.remove();  // quem já marcou continua vendo
+      });
+      itens.forEach(function (i) {
+        if (!i.ativo || grupo.querySelector('input[value="' + i.id + '"]')) return;
+        var rotulo = document.createElement("label"), caixa = document.createElement("input"), texto = document.createElement("span");
+        rotulo.className = "pilula";
+        caixa.type = "checkbox"; caixa.name = grupo.dataset.pilulas; caixa.value = String(i.id);
+        texto.textContent = i.nome;
+        rotulo.appendChild(caixa); rotulo.appendChild(texto);
+        grupo.insertBefore(rotulo, vazio);
+      });
+      if (vazio) vazio.classList.toggle("hidden", !!grupo.querySelector("label.pilula"));
+    }
+
+    function atualizar(c, forcar) {
+      var agora = Date.now();
+      if (!forcar && agora - c.ultima < 3000) return;  // no máximo uma busca a cada 3 s por campo
+      c.ultima = agora;
+      fetch(c.url).then(function (r) { if (!r.ok) throw r; return r.json(); })
+        .then(function (r) { desenharPilulas(c, r.itens); })
+        .catch(function () {});  // sem conexão: fica com o que já está na tela
+    }
+
+    campos.forEach(function (c) {
+      ["pointerenter", "focusin"].forEach(function (ev) { c.alvo.addEventListener(ev, function () { atualizar(c); }); });
+    });
+    document.addEventListener("visibilitychange", function () {
+      if (document.visibilityState === "visible") campos.forEach(function (c) { atualizar(c, true); });
+    });
+  };
+
+  // ---------- Busca digitável no lugar das listas de cadastro ----------
+  // Os selects de cadastro (os que têm o "+" ao lado, ou data-atualizar-url) viram um campo de digitar:
+  // a pessoa escreve, o sistema busca no banco e mostra as opções. Sem resultado exato, aparece
+  // "Novo: …" com o +, que abre a janela de cadastro já com o nome digitado.
+  // O <select> original continua no formulário (escondido) — é ele que vai no POST.
+  //   <select data-atualizar-url="/cadastros/grupo/" data-atualizar-todos>  (todos = mostra desativados também)
+  var LIMITE_BUSCA = 50;
+
+  Nexum.buscaveis = function () {
+    var alvos = [];
+    document.querySelectorAll("[data-gerenciar]").forEach(function (b) {
+      var s = el(b.dataset.alvo);
+      if (s && s.tagName === "SELECT") {
+        alvos.push({ select: s, url: b.dataset.urlLista, botao: b, paiCampo: b.dataset.paiCampo, todos: false });
+      }
+    });
+    document.querySelectorAll("select[data-atualizar-url]").forEach(function (s) {
+      alvos.push({ select: s, url: s.dataset.atualizarUrl, botao: null, paiCampo: s.dataset.atualizarPai,
+                   todos: s.hasAttribute("data-atualizar-todos") });
+    });
+    alvos.forEach(function (c) { if (!c.select.dataset.buscavel) montarBuscavel(c); });
+  };
+
+  function montarBuscavel(c) {
+    var select = c.select;
+    select.dataset.buscavel = "1";
+    var vazia = Array.prototype.find.call(select.options, function (o) { return o.value === ""; });
+    var textoVazio = vazia ? vazia.textContent.trim() : "";
+
+    var caixa = document.createElement("div");
+    caixa.className = "relative min-w-0 flex-1";
+    var campo = document.createElement("input");
+    campo.type = "text";
+    campo.autocomplete = "off";
+    campo.spellcheck = false;
+    campo.className = select.className + " pr-9";
+    campo.setAttribute("role", "combobox");
+    campo.setAttribute("aria-autocomplete", "list");
+    campo.setAttribute("aria-expanded", "false");
+    if (select.id) {
+      // O <label for="id_grupo"> passa a apontar para o campo de digitar
+      var rotulo = document.querySelector('label[for="' + select.id + '"]');
+      campo.id = select.id + "_busca";
+      if (rotulo) rotulo.htmlFor = campo.id;
+    }
+    if (select.hasAttribute("aria-invalid")) campo.setAttribute("aria-invalid", select.getAttribute("aria-invalid"));
+    var lupa = document.createElement("span");
+    lupa.className = "pointer-events-none absolute inset-y-0 right-3 flex items-center text-ink-soft";
+    lupa.innerHTML = '<svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>';
+    var lista = document.createElement("ul");
+    lista.setAttribute("role", "listbox");
+    lista.className = "absolute left-0 top-full z-40 mt-1 hidden max-h-72 w-full min-w-64 overflow-auto rounded-xl border border-line " +
+                      "bg-surface p-1 text-sm text-ink shadow-xl";
+    if (campo.id) { lista.id = campo.id + "_opcoes"; campo.setAttribute("aria-controls", lista.id); }
+
+    select.parentNode.insertBefore(caixa, select);
+    caixa.appendChild(select);
+    caixa.appendChild(campo);
+    caixa.appendChild(lupa);
+    caixa.appendChild(lista);
+    select.hidden = true;
+    select.tabIndex = -1;
+
+    var opcoes = [], ativa = -1, timer = null, pedido = 0;
+
+    function rotuloAtual() {
+      var o = select.options[select.selectedIndex];
+      return o && o.value !== "" ? o.textContent.trim() : "";
+    }
+    function mostrarEscolhido() {
+      campo.value = rotuloAtual();
+      campo.placeholder = textoVazio || "Digite para buscar";
+    }
+    function fechar() {
+      lista.classList.add("hidden");
+      campo.setAttribute("aria-expanded", "false");
+      ativa = -1;
+    }
+    function escolher(valor, nome) {
+      var o = Array.prototype.find.call(select.options, function (x) { return x.value === String(valor); });
+      if (!o && valor !== "") { o = new Option(nome, valor); select.add(o); }
+      select.value = String(valor);
+      select.dispatchEvent(new Event("change", { bubbles: true }));
+      mostrarEscolhido();
+      fechar();
+    }
+    function marcar(i) {
+      ativa = i;
+      opcoes.forEach(function (o, k) {
+        o.li.classList.toggle("bg-primary-soft", k === i);
+        o.li.setAttribute("aria-selected", k === i ? "true" : "false");
+      });
+      if (opcoes[i]) opcoes[i].li.scrollIntoView({ block: "nearest" });
+    }
+    function linha(texto, classe, acao) {
+      var li = document.createElement("li");
+      var registro = { li: li, acao: acao };
+      li.setAttribute("role", "option");
+      li.className = "flex cursor-pointer items-center gap-2 rounded-lg px-3 py-2 " + (classe || "");
+      li.textContent = texto;
+      li.addEventListener("mousedown", function (e) { e.preventDefault(); });  // não tira o foco do campo
+      li.addEventListener("click", acao);
+      li.addEventListener("mousemove", function () { if (opcoes[ativa] !== registro) marcar(opcoes.indexOf(registro)); });
+      opcoes.push(registro);
+      lista.appendChild(li);
+      return li;
+    }
+    function aviso(texto) {
+      var li = document.createElement("li");
+      li.className = "px-3 py-2 text-xs text-ink-soft";
+      li.textContent = texto;
+      lista.appendChild(li);
+    }
+    function abrirLista() {
+      lista.classList.remove("hidden");
+      campo.setAttribute("aria-expanded", "true");
+    }
+    function abrirCadastro(nome) {
+      fechar();
+      mostrarEscolhido();
+      c.botao.click();  // a mesma janela do "+"
+      var novo = el("gerenciador-novo"), dialogo = el("gerenciador");
+      if (novo && dialogo && dialogo.open) { novo.value = nome; novo.focus(); }
+    }
+
+    function desenhar(itens, mais, termo) {
+      lista.innerHTML = "";
+      opcoes = [];
+      var atual = select.value;
+      if (vazia && !termo) linha(textoVazio, "text-ink-soft", function () { escolher("", ""); });
+      itens.forEach(function (i) {
+        var escolhido = String(i.id) === atual;
+        var li = linha(i.nome + (i.ativo ? "" : " (desativado)"), escolhido ? "font-semibold text-primary-text" : "",
+                       function () { escolher(i.id, i.nome); });
+        if (escolhido) li.insertAdjacentHTML("beforeend", '<span class="ml-auto text-xs">✓</span>');
+      });
+      if (mais) aviso("Mostrando os " + itens.length + " primeiros. Digite mais para refinar a busca.");
+      if (!itens.length) aviso(termo ? "Nada encontrado para “" + termo + "”." : (select.dataset.vazio || "Nenhum cadastro ainda."));
+      var exato = itens.some(function (i) { return i.nome.toLowerCase() === termo.toLowerCase(); });
+      if (c.botao && termo && !exato) {
+        var novo = linha("", "mt-1 border-t border-line font-medium text-primary-text", function () { abrirCadastro(termo); });
+        novo.innerHTML = '<span class="flex h-5 w-5 shrink-0 items-center justify-center rounded-md bg-primary-soft">+</span>';
+        novo.appendChild(document.createTextNode("Novo: “" + termo + "”"));
+      }
+      abrirLista();
+      marcar(termo && opcoes.length ? 0 : -1);  // digitando: Enter já pega a primeira opção
+    }
+
+    function buscar() {
+      var termo = campo.value.trim();
+      if (termo === rotuloAtual()) termo = "";  // abriu sem digitar: mostra tudo
+      var pai = "";
+      if (c.paiCampo) {
+        pai = (el(c.paiCampo) || {}).value || "";
+        if (!pai) {
+          lista.innerHTML = ""; opcoes = [];
+          aviso("Escolha " + ((c.botao && c.botao.dataset.paiRotulo) || select.dataset.atualizarPaiRotulo ||
+                              "o cadastro principal") + " primeiro.");
+          abrirLista();
+          return;
+        }
+      }
+      var meu = ++pedido;
+      var url = c.url + (c.url.indexOf("?") >= 0 ? "&" : "?") + "limite=" + LIMITE_BUSCA + "&q=" + encodeURIComponent(termo) + "&pai=" + encodeURIComponent(pai) +
+                (c.todos ? "" : "&ativos=1");
+      fetch(url).then(function (r) { if (!r.ok) throw r; return r.json(); })
+        .then(function (r) { if (meu === pedido && document.activeElement === campo) desenhar(r.itens, r.mais, termo); })
+        .catch(function () {
+          if (meu !== pedido) return;
+          lista.innerHTML = ""; opcoes = [];
+          aviso("Não foi possível buscar agora. Tente de novo.");
+          abrirLista();
+        });
+    }
+
+    campo.addEventListener("focus", function () { campo.select(); buscar(); });
+    campo.addEventListener("click", function () { if (lista.classList.contains("hidden")) buscar(); });
+    campo.addEventListener("input", function () { clearTimeout(timer); timer = setTimeout(buscar, 200); });
+    campo.addEventListener("keydown", function (e) {
+      var aberta = !lista.classList.contains("hidden");
+      if (e.key === "ArrowDown") { e.preventDefault(); if (aberta) marcar(Math.min(ativa + 1, opcoes.length - 1)); else buscar(); }
+      else if (e.key === "ArrowUp") { e.preventDefault(); marcar(Math.max(ativa - 1, 0)); }
+      else if (e.key === "Enter") {
+        if (aberta) { e.preventDefault(); if (opcoes[ativa]) opcoes[ativa].acao(); }  // Enter não envia o formulário
+      } else if (e.key === "Escape" && aberta) { e.preventDefault(); e.stopPropagation(); mostrarEscolhido(); fechar(); }
+    });
+    campo.addEventListener("blur", function () {
+      setTimeout(function () {
+        if (document.activeElement === campo) return;
+        // Apagou o texto: fica sem nada escolhido; digitou e não escolheu: volta para o que estava
+        if (!campo.value.trim() && select.value !== "" && vazia) escolher("", "");
+        else mostrarEscolhido();
+        fechar();
+      }, 120);
+    });
+    // O select mudou por fora (ex.: subgrupos recarregados ao trocar o grupo, cadastro feito pelo "+")
+    select.addEventListener("change", mostrarEscolhido);
+    new MutationObserver(function () { if (document.activeElement !== campo) mostrarEscolhido(); })
+      .observe(select, { childList: true });
+    mostrarEscolhido();
+  }
 })();

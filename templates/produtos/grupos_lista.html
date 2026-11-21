@@ -1,0 +1,107 @@
+{% extends "base_app.html" %}
+{% block title %}Grupos de produtos · Nexum{% endblock %}
+{% block page_title %}Grupos de produtos{% endblock %}
+
+{% block page %}
+<div class="flex flex-wrap items-center justify-between gap-3 mb-4">
+  <form method="get" class="flex w-full max-w-xl flex-wrap items-center gap-2">
+    <div class="relative min-w-60 flex-1">
+      <span class="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-ink-soft">
+        {% include "partials/icone_busca.html" %}
+      </span>
+      <input type="search" name="q" value="{{ q }}" placeholder="Buscar grupo ou subgrupo"
+             class="w-full rounded-lg border border-line bg-surface pl-9 pr-3 py-2 text-sm
+                    focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/30">
+    </div>
+    {% include "partials/filtro_situacao.html" %}
+  </form>
+  <div class="flex flex-wrap items-center gap-2">
+    {% include "partials/botao_excluir_selecionados.html" with titulo="Excluir grupos selecionados?" %}
+    <a href="{% url 'produto_grupo_criar' %}" class="btn btn-novo">{% include "partials/icone_mais.html" %} Novo grupo</a>
+  </div>
+</div>
+
+<form method="post" id="form-selecionados" action="{% url 'produto_grupo_excluir_selecionados' %}">
+{% csrf_token %}
+<div class="bg-surface border border-line rounded-xl overflow-hidden">
+  <div class="overflow-x-auto">
+    <table class="w-full text-sm">
+      <thead class="bg-page text-ink-soft text-left">
+        <tr>
+          <th class="w-12 px-0 py-3">
+            <div class="flex items-center justify-center">
+              <input type="checkbox" data-selecionar-todos aria-label="Selecionar todos"
+                     class="h-4 w-4 rounded border-line accent-primary cursor-pointer">
+            </div>
+          </th>
+          <th class="w-12 px-0 py-3"></th>
+          {% include "partials/th_ordenar.html" with campo="codigo" rotulo="Código" %}
+          {% include "partials/th_ordenar.html" with campo="nome" rotulo="Grupo" %}
+          <th class="px-4 py-3 font-medium ">Subgrupos</th>
+          <th class="px-4 py-3 font-medium ">Vender</th>
+          <th class="px-4 py-3 font-medium ">Situação</th>
+        </tr>
+      </thead>
+      <tbody class="divide-y divide-line">
+        {% for g in grupos %}
+        {% url 'produto_grupo_editar' g.pk as url_abrir %}
+        <tr class="hover:bg-primary-soft/60 transition-colors">
+          <td class="px-0 py-3">
+            <div class="flex items-center justify-center">
+              <input type="checkbox" name="selecionados" value="{{ g.pk }}" data-selecionar
+                     aria-label="Selecionar {{ g }}"
+                     class="h-4 w-4 rounded border-line accent-primary cursor-pointer">
+            </div>
+          </td>
+          <td class="px-0 py-3">
+            <div class="flex items-center justify-center">
+              <a href="{{ url_abrir }}" title="Editar" aria-label="Editar {{ g }}"
+                 class="inline-flex rounded-md p-1.5 text-ink-soft hover:text-primary-text hover:bg-primary-soft transition">
+                {% include "partials/icone_lapis.html" %}
+              </a>
+            </div>
+          </td>
+          {# Cada célula é um link para abrir o registro #}
+          <td class="p-0 tabular-nums text-ink-soft"><a href="{{ url_abrir }}" tabindex="-1" class="block px-4 py-3">{{ g.pk }}</a></td>
+          <td class="p-0">
+            <a href="{{ url_abrir }}" tabindex="-1" class="flex flex-wrap items-center gap-1.5 px-4 py-3">
+              <span class="font-medium">{{ g.nome }}</span>
+              {% if g.hortifruti %}<span class="rounded-full bg-success/15 px-2 py-0.5 text-[10px] font-semibold text-success">Hortifruti</span>{% endif %}
+              {% if g.restricao_idade %}<span class="rounded-full bg-danger-soft px-2 py-0.5 text-[10px] font-semibold text-danger">+18</span>{% endif %}
+            </a>
+          </td>
+          <td class="p-0"><a href="{{ url_abrir }}" tabindex="-1" class="block px-4 py-3 {% if not g.total_subgrupos %}text-ink-soft{% endif %}">{{ g.total_subgrupos|default:"—" }}</a></td>
+          <td class="p-0">
+            <a href="{{ url_abrir }}" tabindex="-1" class="block px-4 py-3">
+              {% if g.vender %}Sim{% else %}<span class="rounded-full bg-warning/15 px-2.5 py-0.5 text-xs font-medium text-warning">Não</span>{% endif %}
+            </a>
+          </td>
+          <td class="p-0">
+            <a href="{{ url_abrir }}" tabindex="-1" class="block px-4 py-3">
+              {% if g.ativo %}
+              <span class="rounded-full bg-success/15 text-success px-2.5 py-0.5 text-xs font-medium">Ativo</span>
+              {% else %}
+              <span class="rounded-full bg-ink-soft/15 text-ink-soft px-2.5 py-0.5 text-xs font-medium">Desativado</span>
+              {% endif %}
+            </a>
+          </td>
+        </tr>
+        {% empty %}
+        <tr>
+          <td colspan="7" class="px-4 py-10 text-center text-ink-soft">
+            {% if q %}Nenhum grupo {% if so_desativados %}desativado {% endif %}encontrado para "{{ q }}".
+            {% elif so_desativados %}Nenhum grupo desativado.
+            {% else %}Nenhum grupo ativo. Clique em <strong>Novo grupo</strong> para cadastrar.{% endif %}
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+</form>
+
+{% include "partials/paginacao.html" %}
+
+<script>Nexum.selecao(); Nexum.excluirSelecionados();</script>
+{% endblock %}

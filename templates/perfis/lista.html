@@ -8,10 +8,15 @@
   <p class="text-sm text-ink-soft">
     Cada perfil reúne o que a pessoa pode fazer. Os perfis são dados por empresa, no usuário de cada um.
   </p>
-  <a href="{% url 'perfil_criar' %}"
+  <div class="flex flex-wrap items-center gap-2">
+    {% include "partials/botao_excluir_selecionados.html" with titulo="Excluir perfis selecionados?" %}
+    <a href="{% url 'perfil_criar' %}"
      class="btn btn-novo">{% include "partials/icone_mais.html" %} Novo perfil</a>
+  </div>
 </div>
 
+<form method="post" id="form-selecionados" action="{% url 'perfil_excluir_selecionados' %}">
+{% csrf_token %}
 <div class="bg-surface border border-line rounded-xl overflow-hidden">
   <div class="overflow-x-auto">
     <table class="w-full text-sm">
@@ -26,8 +31,8 @@
           <th class="w-12 px-0 py-3"></th>
           {% include "partials/th_ordenar.html" with campo="codigo" rotulo="Código" %}
           {% include "partials/th_ordenar.html" with campo="nome" rotulo="Nome" %}
-          {% include "partials/th_ordenar.html" with campo="permissoes" rotulo="Permissões" %}
-          {% include "partials/th_ordenar.html" with campo="usuarios" rotulo="Usuários" %}
+          <th class="px-4 py-3 font-medium ">Permissões</th>
+          <th class="px-4 py-3 font-medium ">Usuários</th>
         </tr>
       </thead>
       <tbody class="divide-y divide-line">
@@ -65,6 +70,7 @@
     </table>
   </div>
 </div>
+</form>
 
-<script>Nexum.selecao();</script>
+<script>Nexum.selecao(); Nexum.excluirSelecionados();</script>
 {% endblock %}

@@ -8,17 +8,14 @@ from django.views.generic import ListView
 
 from contas.permissions import AdministradorMixin, administrador_requerido
 from contas.views import contexto_acessos
-from core.listas import FiltroSituacaoMixin, OrdenacaoMixin
+from core.listas import FiltroSituacaoMixin, OrdenacaoMixin, excluir_selecionados
 
 from .forms import FuncionarioForm, UsuarioFuncionarioForm
 from .models import Funcionario
 
 
 class FuncionarioListView(AdministradorMixin, FiltroSituacaoMixin, OrdenacaoMixin, ListView):
-    ordenacoes = {
-        "nome": "nome", "funcao": "funcao__nome", "setor": "setor__nome",
-        "cpf": "cpf", "acesso": "usuario__email", "situacao": "ativo",
-    }
+    ordenacoes = {"codigo": "pk", "nome": "nome"}  # só Código e nome têm seta
     paginate_by = 30
     template_name = "funcionarios/lista.html"
     context_object_name = "funcionarios"
@@ -75,7 +72,7 @@ def funcionario_form(request, pk=None):
         funcionario.sincronizar_usuario()
     if pk:
         messages.success(request, "Funcionário atualizado com sucesso.")
-        return redirect("funcionario_lista")
+        return redirect("funcionario_editar", pk=funcionario.pk)  # continua no cadastro
     messages.success(request, "Funcionário cadastrado. Se ele for usar o sistema, configure o usuário.")
     return redirect(url_aba_usuario(funcionario))
 
@@ -136,3 +133,20 @@ def funcionario_excluir(request, pk):
         messages.success(request, f"Funcionário {nome} excluído.")
         return redirect("funcionario_lista")
     return render(request, "funcionarios/excluir.html", {"funcionario": funcionario})
+
+
+@administrador_requerido
+@require_POST
+def funcionario_excluir_selecionados(request):
+    def impedimento(funcionario):
+        return "é o seu próprio cadastro" if funcionario.usuario_id == request.user.pk else None
+
+    def excluir(funcionario):
+        usuario = funcionario.usuario
+        funcionario.delete()
+        if usuario:
+            usuario.delete()  # o acesso ao sistema pertence ao funcionário
+
+    excluir_selecionados(request, Funcionario.objects.select_related("usuario"), singular="funcionário",
+                         plural="funcionários", impedimento=impedimento, excluir=excluir)
+    return redirect("funcionario_lista")

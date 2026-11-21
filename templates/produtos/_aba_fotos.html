@@ -1,0 +1,188 @@
+{% comment %}
+Aba "Fotos" do produto: envio (várias de uma vez, arrastando ou escolhendo) e a galeria.
+A foto principal aparece primeiro e é a que vai representar o produto.
+{% endcomment %}
+{% if not object %}
+<div class="rounded-xl border border-dashed border-line p-8 text-center text-sm text-ink-soft">
+  Salve o produto primeiro. Depois as fotos são adicionadas aqui.
+</div>
+{% else %}
+<div class="grid gap-6 lg:grid-cols-3">
+
+  {# ---------- Envio ---------- #}
+  <form method="post" enctype="multipart/form-data" action="{% url 'produto_fotos_enviar' object.pk %}"
+        id="form-fotos" class="h-fit space-y-4 rounded-xl border border-line bg-page/40 p-5" novalidate>
+    {% csrf_token %}
+    <div>
+      <h2 class="text-base font-semibold">Adicionar fotos</h2>
+      <p class="text-xs text-ink-soft">JPG, PNG, WEBP ou GIF · até 5 MB cada · até 20 fotos por produto.</p>
+    </div>
+
+    <label data-area-fotos
+           class="flex cursor-pointer flex-col items-center justify-center gap-2 rounded-xl border-2 border-dashed border-line
+                  bg-surface px-4 py-8 text-center transition hover:border-primary/50 hover:bg-primary-soft/30">
+      <input type="file" name="fotos" accept="image/jpeg,image/png,image/webp,image/gif" multiple class="sr-only" data-input-fotos>
+      <span class="flex h-12 w-12 items-center justify-center rounded-full bg-primary-soft text-primary-text">
+        <svg class="h-6 w-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="9" cy="9" r="2"/><path d="m21 15-3.1-3.1a2 2 0 0 0-2.8 0L6 21"/></svg>
+      </span>
+      <span class="text-sm font-medium">Arraste as fotos aqui</span>
+      <span class="text-xs text-ink-soft">ou clique para escolher no computador</span>
+    </label>
+
+    <ul data-previas class="hidden grid grid-cols-4 gap-2"></ul>
+
+    <div>
+      <label for="foto-descricao" class="block text-sm font-medium">Descrição <span class="font-normal text-ink-soft">(opcional)</span></label>
+      <textarea id="foto-descricao" name="descricao" rows="2" maxlength="200"
+                class="mt-1 block w-full rounded-lg border border-line bg-surface px-3 py-2 text-sm focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/30"
+                placeholder="Ex.: frente da embalagem"></textarea>
+    </div>
+
+    <label class="inline-flex cursor-pointer items-center gap-3">
+      <span class="relative inline-flex shrink-0">
+        <input type="checkbox" name="principal" value="1" class="peer sr-only">
+        <span class="h-6 w-11 rounded-full bg-line transition peer-checked:bg-primary peer-focus-visible:ring-2 peer-focus-visible:ring-primary/30"></span>
+        <span class="absolute left-0.5 top-0.5 h-5 w-5 rounded-full bg-white shadow transition peer-checked:translate-x-5"></span>
+      </span>
+      <span class="text-sm font-medium">Definir como foto principal</span>
+    </label>
+
+    <button type="submit" class="btn btn-primario w-full" data-enviar-fotos disabled>
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 13v8M4 14.9A7 7 0 1 1 15.7 8h1.8a4.5 4.5 0 0 1 2.5 8.2"/><path d="m8 17 4-4 4 4"/></svg>
+      <span data-texto-enviar>Enviar fotos</span>
+    </button>
+  </form>
+
+  {# ---------- Galeria ---------- #}
+  <div class="lg:col-span-2">
+    {% if fotos %}
+    <ul class="grid grid-cols-2 gap-4 sm:grid-cols-3">
+      {% for foto in fotos %}
+      <li class="group overflow-hidden rounded-xl border {% if foto.principal %}border-primary/50 ring-2 ring-primary/20{% else %}border-line{% endif %} bg-surface">
+        <a href="{{ foto.arquivo.url }}" target="_blank" rel="noopener" class="relative block aspect-square bg-page"
+           title="Abrir a foto em tamanho real">
+          <img src="{{ foto.arquivo.url }}" alt="{{ foto.descricao|default:object.descricao }}" loading="lazy"
+               class="h-full w-full object-cover transition group-hover:scale-[1.02]">
+          {% if foto.principal %}
+          <span class="absolute left-2 top-2 inline-flex items-center gap-1 rounded-full bg-primary px-2 py-0.5 text-[11px] font-semibold text-white shadow">
+            <svg class="h-3 w-3" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="m12 2 3.1 6.3 6.9 1-5 4.9 1.2 6.8L12 17.8 5.8 21l1.2-6.8-5-4.9 6.9-1Z"/></svg>
+            Principal
+          </span>
+          {% endif %}
+        </a>
+        <div class="flex items-center gap-1 px-3 py-2">
+          <p class="min-w-0 flex-1 truncate text-xs {% if foto.descricao %}text-ink{% else %}text-ink-soft italic{% endif %}" title="{{ foto.descricao }}">
+            {{ foto.descricao|default:"Sem descrição" }}
+          </p>
+          {% if not foto.principal %}
+          <form method="post" action="{% url 'produto_foto_principal' object.pk foto.pk %}">
+            {% csrf_token %}
+            <button type="submit" class="rounded-md p-1.5 text-ink-soft transition hover:bg-primary-soft hover:text-primary-text"
+                    title="Tornar a foto principal" aria-label="Tornar a foto principal">
+              <svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round" aria-hidden="true"><path d="m12 2 3.1 6.3 6.9 1-5 4.9 1.2 6.8L12 17.8 5.8 21l1.2-6.8-5-4.9 6.9-1Z"/></svg>
+            </button>
+          </form>
+          {% endif %}
+          <button type="button" data-editar-foto="{% url 'produto_foto_editar' object.pk foto.pk %}" data-descricao="{{ foto.descricao }}"
+                  class="rounded-md p-1.5 text-ink-soft transition hover:bg-primary-soft hover:text-primary-text"
+                  title="Editar descrição" aria-label="Editar descrição">{% include "partials/icone_lapis.html" %}</button>
+          <form method="post" action="{% url 'produto_foto_excluir' object.pk foto.pk %}"
+                data-confirmar-titulo="Excluir foto?" data-confirmar="A foto{% if foto.descricao %} “{{ foto.descricao }}”{% endif %} será excluída."
+                {% if foto.principal and fotos|length > 1 %}data-confirmar-aviso="Ela é a principal: a próxima foto passa a ser a principal."{% endif %}>
+            {% csrf_token %}
+            <button type="submit" class="rounded-md p-1.5 text-ink-soft transition hover:bg-danger-soft hover:text-danger"
+                    title="Excluir foto" aria-label="Excluir foto">{% include "partials/icone_lixeira.html" %}</button>
+          </form>
+        </div>
+      </li>
+      {% endfor %}
+    </ul>
+    {% else %}
+    <div class="flex h-full min-h-56 flex-col items-center justify-center gap-2 rounded-xl border border-dashed border-line p-8 text-center">
+      <span class="flex h-12 w-12 items-center justify-center rounded-full bg-page text-ink-soft">
+        <svg class="h-6 w-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="9" cy="9" r="2"/><path d="m21 15-3.1-3.1a2 2 0 0 0-2.8 0L6 21"/></svg>
+      </span>
+      <p class="text-sm font-medium">Nenhuma foto ainda</p>
+      <p class="text-xs text-ink-soft">A primeira foto enviada vira a principal.</p>
+    </div>
+    {% endif %}
+  </div>
+</div>
+
+{# Janela "Editar descrição" (uma só, serve para todas as fotos) #}
+<dialog id="dialogo-foto" aria-labelledby="foto-titulo"
+        class="dialogo-animado m-auto w-[calc(100%-2rem)] max-w-md rounded-2xl border border-line bg-surface p-0 text-ink shadow-2xl backdrop:bg-black/40">
+  <form method="post" action="" data-form-foto>
+    {% csrf_token %}
+    <div class="px-6 pt-5 pb-4">
+      <h2 id="foto-titulo" class="text-lg font-semibold">Descrição da foto</h2>
+      <textarea name="descricao" rows="3" maxlength="200" data-descricao-foto
+                class="mt-3 block w-full rounded-lg border border-line bg-surface px-3 py-2 text-sm focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/30"></textarea>
+    </div>
+    <div class="flex items-center justify-end gap-3 rounded-b-2xl border-t border-line bg-page/60 px-6 py-4">
+      <button type="button" data-fechar-foto class="btn btn-texto">Cancelar</button>
+      <button type="submit" class="btn btn-primario">{% include "partials/icone_check.html" %} Salvar</button>
+    </div>
+  </form>
+</dialog>
+
+<script>
+  (function () {
+    var form = document.getElementById("form-fotos");
+    var entrada = form.querySelector("[data-input-fotos]");
+    var area = form.querySelector("[data-area-fotos]");
+    var previas = form.querySelector("[data-previas]");
+    var enviar = form.querySelector("[data-enviar-fotos]");
+    var texto = form.querySelector("[data-texto-enviar]");
+
+    function mostrar() {
+      var arquivos = Array.prototype.slice.call(entrada.files || []);
+      previas.innerHTML = "";
+      arquivos.forEach(function (a) {
+        var li = document.createElement("li");
+        li.className = "aspect-square overflow-hidden rounded-lg border border-line bg-page";
+        if (a.type.indexOf("image/") === 0) {
+          var img = document.createElement("img");
+          img.src = URL.createObjectURL(a);
+          img.alt = a.name;
+          img.className = "h-full w-full object-cover";
+          li.appendChild(img);
+        }
+        previas.appendChild(li);
+      });
+      previas.classList.toggle("hidden", !arquivos.length);
+      enviar.disabled = !arquivos.length;
+      texto.textContent = arquivos.length > 1 ? "Enviar " + arquivos.length + " fotos" : "Enviar foto" + (arquivos.length ? "" : "s");
+    }
+    entrada.addEventListener("change", mostrar);
+
+    // Arrastar e soltar
+    ["dragenter", "dragover"].forEach(function (ev) {
+      area.addEventListener(ev, function (e) { e.preventDefault(); area.classList.add("border-primary", "bg-primary-soft/40"); });
+    });
+    ["dragleave", "drop"].forEach(function (ev) {
+      area.addEventListener(ev, function (e) { e.preventDefault(); area.classList.remove("border-primary", "bg-primary-soft/40"); });
+    });
+    area.addEventListener("drop", function (e) {
+      if (!e.dataTransfer || !e.dataTransfer.files.length) return;
+      entrada.files = e.dataTransfer.files;
+      mostrar();
+    });
+    form.addEventListener("submit", function () { enviar.disabled = true; texto.textContent = "Enviando…"; });
+
+    // Editar descrição
+    var dialogo = document.getElementById("dialogo-foto");
+    var formFoto = dialogo.querySelector("[data-form-foto]");
+    var campo = dialogo.querySelector("[data-descricao-foto]");
+    document.querySelectorAll("[data-editar-foto]").forEach(function (b) {
+      b.addEventListener("click", function () {
+        formFoto.action = b.dataset.editarFoto;
+        campo.value = b.dataset.descricao || "";
+        dialogo.showModal();
+        campo.focus();
+      });
+    });
+    dialogo.querySelector("[data-fechar-foto]").addEventListener("click", function () { dialogo.close(); });
+  })();
+</script>
+{% endif %}
